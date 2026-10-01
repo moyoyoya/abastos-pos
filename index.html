@@ -1,0 +1,1430 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Abastos Brew · Punto de venta</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#23201c">
+<link rel="icon" href="icon-192.png">
+<!-- Fonts load once with internet; sw.js then keeps them for offline use. System fonts are the fallback. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root{
+  --bg:#efe8dc;--paper:#f7f2e9;--ink:#23201c;--muted:#6f675c;--rule:#23201c;--line:#d8cdbb;
+  --accent:#7a5a3a;--accent-soft:#e7dcc9;--danger:#a3321f;
+  --ok-bg:#e1e6d3;--ok-ink:#3f5a2c;--low-bg:#f3e2c0;--low-ink:#6b4a12;--out-bg:#f2d5cd;--out-ink:#8e2a19;
+  --display:Oswald,"Roboto Condensed","sans-serif-condensed","Arial Narrow",sans-serif;
+  --body:"Source Serif 4","Noto Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--body);background:var(--bg);color:var(--ink);font-size:17px}
+h1,h2,h3,label,.tabs,.stat,.total-row,.pill,.stock-big,.price,.price-txt,.change{font-family:var(--display)}
+button{font:inherit;font-family:var(--display);border:0;border-radius:6px;padding:12px 16px;cursor:pointer;min-height:48px;text-transform:uppercase;letter-spacing:.05em}
+.primary{background:var(--ink);color:var(--paper);font-weight:600}
+.secondary{background:var(--accent-soft);color:var(--ink)}
+.danger{background:transparent;color:var(--danger)}
+.icon-btn{background:transparent;color:var(--danger);min-width:44px;padding:0}
+input,select{font:inherit;font-family:var(--body);width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:#fffdf8;min-height:48px;color:var(--ink)}
+label{display:block;margin:10px 0;font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+label input{margin-top:4px;text-transform:none;letter-spacing:.01em}
+.top{display:flex;align-items:center;gap:14px;padding:12px 16px;border-bottom:2px solid var(--rule);background:var(--bg)}
+.top img{height:64px;width:auto}
+.top h1{margin:0;font-size:30px;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+.top .sub{color:var(--accent);letter-spacing:.35em;font-size:14px;margin-top:4px;text-transform:uppercase}
+.tabs{display:flex;gap:2px;padding:0 8px;border-bottom:1px solid var(--rule);overflow-x:auto;background:var(--bg)}
+.tabs button{background:transparent;flex:1;white-space:nowrap;border-radius:0;border-bottom:3px solid transparent;color:var(--muted)}
+.tabs button.active{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+main{padding:14px;max-width:1200px;margin:0 auto}
+.hidden{display:none!important}
+.banner{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--low-bg);color:var(--low-ink)}
+.banner button{background:var(--low-ink);color:#fff;min-height:40px;padding:8px 14px}
+.sell-layout{display:grid;grid-template-columns:1fr 370px;gap:14px}
+@media(max-width:820px){.sell-layout{grid-template-columns:1fr}}
+.sell-layout>*{min-width:0}
+.cat-title{margin:18px 0 8px;font-size:22px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--rule);padding-bottom:6px}
+.cat-title span{color:var(--accent);margin-right:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.prod{background:var(--paper);border:1px solid var(--line);min-height:92px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;text-align:left;color:var(--ink);gap:6px}
+.prod .price{color:var(--accent);font-weight:600;font-size:18px}
+.tile-warn{font-size:12px;color:var(--out-ink);text-transform:none;letter-spacing:0;font-family:var(--body)}
+.prod .prices{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.prod .dprice{font-size:13px;color:var(--muted);font-family:var(--display)}
+.chan{display:inline-block;font-family:var(--display);font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:1px 7px;border-radius:999px;background:var(--ink);color:var(--paper);vertical-align:middle;margin-left:4px}
+dialog{border:0;border-radius:10px;padding:20px;background:var(--paper);color:var(--ink);width:min(420px,92vw);max-height:90vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.variant-row{border:1px solid var(--line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fffdf8}
+.vr-top{display:grid;grid-template-columns:1fr 120px 44px;gap:6px}
+.vr-bottom{display:grid;grid-template-columns:1fr 90px;gap:6px;margin-top:6px}
+.dialog-actions{display:flex;gap:8px;margin-top:14px}
+.dialog-actions button{flex:1}
+dialog::backdrop{background:rgba(35,32,28,.55)}
+.choice{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:72px;margin-top:10px;font-size:20px;background:var(--accent-soft);color:var(--ink)}
+.choice strong{color:var(--accent);font-size:24px}
+.choice.store{background:var(--ink);color:var(--paper)}
+.choice.store strong{color:var(--paper)}
+.cart,.card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:14px}
+.card{margin-bottom:14px}
+.cart{align-self:start;position:sticky;top:12px}
+h2{margin:0 0 10px;font-size:20px;text-transform:uppercase;letter-spacing:.04em}
+h2::before{content:"✱ ";color:var(--accent)}
+#cartList,.list,.mov-list{list-style:none;margin:0;padding:0}
+.cart-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.cart-item .name{flex:1}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button{min-height:40px;min-width:40px;padding:0;background:var(--accent-soft);font-size:20px}
+.total-row{display:flex;justify-content:space-between;align-items:baseline;font-size:24px;margin:12px 0;text-transform:uppercase;border-top:2px solid var(--rule);padding-top:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.seg button{background:var(--accent-soft);flex:1;color:var(--ink)}
+.seg button.on{background:var(--ink);color:var(--paper)}
+.change{margin:6px 0 10px;font-size:18px}
+.cart-actions{display:grid;grid-template-columns:1fr 2fr;gap:8px;margin-top:12px}
+.stock-warn{margin-top:10px;padding:8px 10px;border-radius:6px;background:var(--low-bg);color:var(--low-ink);font-size:14px}
+.list li{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.meta{color:var(--muted);font-size:14px}
+.price-txt{color:var(--accent);font-weight:600}
+.voided{opacity:.55}
+.voided .amt{text-decoration:line-through}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:0 0 14px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px}
+.stat .v{font-size:26px;font-weight:700}
+.stat .k{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
+.hint{color:var(--muted);font-size:14px;text-transform:none;letter-spacing:0}
+.empty{color:var(--muted);text-align:center;padding:24px;justify-content:center!important}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.pill.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.pill.bajo{background:var(--low-bg);color:var(--low-ink)}
+.pill.agotado{background:var(--out-bg);color:var(--out-ink)}
+.stock-big{font-size:24px;font-weight:700}
+.item-main{flex:1;min-width:200px}
+.recipe-row{display:grid;grid-template-columns:1fr 90px 44px;gap:6px;margin-bottom:6px}
+.mov-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.pos{color:var(--ok-ink);font-weight:600}.neg{color:var(--out-ink);font-weight:600}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left;white-space:normal}
+th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:500}
+.calc td{font-size:18px}
+.calc tr.result td{border-top:2px solid var(--rule);border-bottom:0;font-weight:700;font-size:22px;font-family:var(--display)}
+.money{font-variant-numeric:tabular-nums}
+.two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.two-col>*{min-width:0}
+.period-nav{display:flex;align-items:center;gap:8px;margin:10px 0 14px}
+.period-nav strong{flex:1;text-align:center;font-family:var(--display);text-transform:uppercase;letter-spacing:.04em}
+.period-nav button{min-width:48px;background:var(--accent-soft);color:var(--ink);font-size:20px;padding:0}
+.diff{font-family:var(--display);font-size:20px;margin:4px 0 8px}
+.warn-box{padding:8px 10px;border-radius:6px;background:var(--low-bg);color:var(--low-ink);font-size:14px;margin:8px 0}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:2px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{flex:none;min-height:40px;padding:6px 14px;border-radius:999px;background:var(--accent-soft);color:var(--ink);font-size:14px}
+.chips button.on{background:var(--ink);color:var(--paper)}
+.sheet-head{display:flex;justify-content:space-between;align-items:center}
+.close-btn{background:var(--accent-soft);color:var(--ink);min-width:44px;min-height:44px;padding:0;font-size:18px}
+.phone-only,.cart-bar,.sheet-backdrop,.more-menu{display:none}
+@keyframes bump{50%{transform:scale(1.04)}}
+@media (max-width:700px){
+  body{font-size:16px;padding-bottom:calc(60px + env(safe-area-inset-bottom,0px))}
+  .top{padding:8px 16px;gap:10px}
+  .top img{height:40px}
+  .top h1{font-size:20px}
+  .top .sub{font-size:11px;letter-spacing:.25em;margin-top:2px}
+  main{padding:12px 16px}
+  .phone-only{display:block}
+  /* bottom tab bar */
+  .tabs{position:fixed;left:0;right:0;bottom:0;z-index:15;padding:0 0 env(safe-area-inset-bottom,0px);border-top:1px solid var(--rule);border-bottom:0;overflow:visible;gap:0}
+  .tabs button{font-size:12px;padding:6px 2px;min-height:58px;border-bottom:0;border-top:3px solid transparent;letter-spacing:.04em}
+  .tabs button.active{border-top-color:var(--ink)}
+  .tabs .more-item{display:none}
+  .more-menu{display:flex;flex-direction:column;position:fixed;right:8px;bottom:calc(66px + env(safe-area-inset-bottom,0px));z-index:16;min-width:220px;background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 30px rgba(35,32,28,.25);padding:6px}
+  .more-menu.hidden{display:none!important}
+  .more-menu button{background:transparent;color:var(--ink);text-align:left}
+  .more-menu button.active{background:var(--accent-soft)}
+  /* selling */
+  .sell-tools{position:sticky;top:0;z-index:3;background:var(--bg);margin:0 -16px;padding:8px 16px 6px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .prod{min-height:80px;padding:10px 12px;font-size:15px}
+  .cat-title{font-size:18px;margin:14px 0 6px}
+  #tab-sell{padding-bottom:80px}
+  .cart-bar{display:flex;align-items:center;gap:10px;position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom,0px));z-index:10;min-height:56px;background:var(--ink);color:var(--paper);border-radius:10px;box-shadow:0 6px 20px rgba(35,32,28,.3)}
+  .cart-bar.hidden{display:none!important}
+  .cart-bar span:first-child{flex:1;text-align:left;text-transform:none;letter-spacing:.02em}
+  .cart-bar strong{font-size:19px}
+  .cart-bar-go{font-size:13px;opacity:.85}
+  .cart-bar.bump{animation:bump .25s}
+  /* cart as a bottom sheet */
+  .cart{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;max-height:90vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -8px 30px rgba(35,32,28,.25)}
+  body.cart-open .cart{transform:none}
+  .sheet-backdrop{position:fixed;inset:0;z-index:25;background:rgba(35,32,28,.45)}
+  body.cart-open .sheet-backdrop{display:block}
+  body.cart-open{overflow:hidden}
+  /* lists and cards */
+  .list li{padding:10px}
+  .list li>.row{width:100%}
+  .list li>.row button{flex:1;padding:10px 6px;font-size:14px}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat .v{font-size:21px}
+  .card{padding:12px}
+  .banner{font-size:14px;padding:8px 16px}
+  .toast{bottom:calc(136px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:700px) and (prefers-reduced-motion:reduce){.cart{transition:none}.cart-bar.bump{animation:none}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;max-width:90vw;z-index:10}
+</style>
+</head>
+<body>
+<header class="top">
+  <img src="logo.png" alt="">
+  <div><h1 id="shopName">Abastos Brew</h1><div class="sub">Punto de venta</div></div>
+</header>
+<div id="backupBanner" class="banner hidden"><span id="backupBannerText"></span><button data-go="backup">Respaldar</button></div>
+<nav class="tabs">
+  <button data-tab="sell" class="active">Vender</button>
+  <button data-tab="sales">Ventas</button>
+  <button data-tab="products" class="more-item">Productos</button>
+  <button data-tab="inventory" class="more-item">Inventario</button>
+  <button data-tab="expenses">Gastos</button>
+  <button data-tab="close">Cierre</button>
+  <button data-tab="backup" class="more-item">Respaldo</button>
+  <button type="button" id="moreBtn" class="phone-only" aria-haspopup="true">Más</button>
+</nav>
+<div id="moreMenu" class="more-menu hidden">
+  <button data-tab="products">Productos</button>
+  <button data-tab="inventory">Inventario</button>
+  <button data-tab="backup">Respaldo y ajustes</button>
+</div>
+<main>
+  <!-- VENDER -->
+  <section id="tab-sell" class="tab">
+    <div class="sell-layout">
+      <div>
+        <div class="sell-tools">
+          <input id="productSearch" type="search" placeholder="Buscar producto">
+          <div id="catChips" class="chips"></div>
+        </div>
+        <div id="productGrid"></div>
+        <p id="noProducts" class="empty hidden">Aún no hay productos. Agrégalos en la pestaña Productos.</p>
+      </div>
+      <aside class="cart">
+        <div class="sheet-head"><h2>Venta actual</h2><button type="button" id="cartClose" class="close-btn phone-only" aria-label="Cerrar">✕</button></div>
+        <ul id="cartList"></ul>
+        <div id="cartStockWarn" class="stock-warn hidden"></div>
+        <div class="total-row"><span>Total</span><strong id="cartTotal"></strong></div>
+        <div class="hint">Forma de pago</div>
+        <div id="paymentButtons" class="seg"></div>
+        <div id="cashBox" class="hidden">
+          <label>Efectivo recibido<input id="cashReceived" type="text" inputmode="decimal"></label>
+          <div class="change">Cambio: <strong id="changeDue">—</strong></div>
+        </div>
+        <div class="cart-actions">
+          <button id="clearCart" class="secondary">Limpiar</button>
+          <button id="completeSale" class="primary">Cobrar</button>
+        </div>
+      </aside>
+    </div>
+    <div id="cartBackdrop" class="sheet-backdrop"></div>
+    <button type="button" id="cartBar" class="cart-bar hidden"><span id="cartBarCount"></span><strong id="cartBarTotal"></strong><span class="cart-bar-go">Ver venta ›</span></button>
+  </section>
+
+  <!-- VENTAS -->
+  <section id="tab-sales" class="tab hidden">
+    <div class="row"><label>Día <input id="salesDate" type="date"></label></div>
+    <div id="salesSummary" class="summary"></div>
+    <ul id="salesList" class="list"></ul>
+  </section>
+
+  <!-- PRODUCTOS -->
+  <section id="tab-products" class="tab hidden">
+    <form id="productForm" class="card">
+      <h2 id="productFormTitle">Nuevo producto</h2>
+      <input type="hidden" id="productId">
+      <label>Nombre<input id="productName" required placeholder="Ej.: Latte grande"></label>
+      <label>Precio en tienda<input id="productPrice" inputmode="decimal" required></label>
+      <label>Precio en apps de delivery (opcional)<input id="productDeliveryPrice" inputmode="decimal" placeholder="Vacío = solo se vende en tienda"></label>
+      <label>Categoría (opcional)<input id="productCategory" list="categoryList" placeholder="Ej.: Clásicos"></label>
+      <datalist id="categoryList"></datalist>
+      <div class="hint" style="margin:14px 0 6px">Insumos que se descuentan al vender <strong>una</strong> unidad de este producto:</div>
+      <div id="recipeRows"></div>
+      <button type="button" id="addRecipeRow" class="secondary">+ Agregar insumo</button>
+      <p id="recipeHint" class="hint"></p>
+      <div class="hint" style="margin:18px 0 6px"><strong>Variantes o sabores</strong> (opcional). Si agregas variantes, al vender se pedirá elegir una, así que incluye también la opción básica (ej. Regular). Cada variante puede costar más y usar un insumo extra.</div>
+      <div id="variantRows"></div>
+      <button type="button" id="addVariantRow" class="secondary">+ Agregar variante</button>
+      <div class="row" style="margin-top:10px">
+        <button type="submit" class="primary" id="productSave">Agregar producto</button>
+        <button type="button" class="secondary hidden" id="productCancel">Cancelar</button>
+      </div>
+    </form>
+    <ul id="productList" class="list"></ul>
+  </section>
+
+  <!-- INVENTARIO -->
+  <section id="tab-inventory" class="tab hidden">
+    <div id="invSummary" class="summary"></div>
+    <ul id="itemList" class="list"></ul>
+    <form id="itemForm" class="card">
+      <h2 id="itemFormTitle">Nuevo insumo</h2>
+      <input type="hidden" id="itemId">
+      <label>Nombre<input id="itemName" required placeholder="Ej.: Vaso 12 oz"></label>
+      <label>Unidad<input id="itemUnit" list="unitList" value="pza"></label>
+      <datalist id="unitList"><option value="pza"><option value="g"><option value="kg"><option value="ml"><option value="l"></datalist>
+      <label id="itemStockLabel">Existencia actual<input id="itemStock" inputmode="decimal" value="0"></label>
+      <label>Avisar cuando queden (opcional)<input id="itemLow" inputmode="decimal" placeholder="Ej.: 20"></label>
+      <div class="row">
+        <button type="submit" class="primary" id="itemSave">Agregar insumo</button>
+        <button type="button" class="secondary hidden" id="itemCancel">Cancelar</button>
+      </div>
+    </form>
+    <div class="card">
+      <h2>Movimientos recientes</h2>
+      <ul id="movementList" class="mov-list"></ul>
+    </div>
+  </section>
+
+  <!-- GASTOS -->
+  <section id="tab-expenses" class="tab hidden">
+    <div class="row"><label>Día <input id="expDate" type="date"></label></div>
+    <div id="expSummary" class="summary"></div>
+    <form id="expForm" class="card">
+      <h2>Nuevo gasto</h2>
+      <label>Concepto<input id="expConcept" required placeholder="Ej.: Leche 12 litros"></label>
+      <label>Categoría<input id="expCategory" list="expCategoryList" placeholder="Ej.: Insumos"></label>
+      <datalist id="expCategoryList"></datalist>
+      <label>Monto<input id="expAmount" inputmode="decimal" required></label>
+      <label>Pagado con
+        <select id="expPaidFrom">
+          <option value="caja">Efectivo de la caja</option>
+          <option value="otro">Otro (tarjeta, transferencia, dinero aparte)</option>
+        </select>
+      </label>
+      <p class="hint">Lo que se paga con efectivo de la caja se descuenta en el cierre del día.</p>
+      <button type="submit" class="primary">Agregar gasto</button>
+    </form>
+    <ul id="expList" class="list"></ul>
+  </section>
+
+  <!-- CIERRE -->
+  <section id="tab-close" class="tab hidden">
+    <div class="row"><label>Día <input id="closeDate" type="date"></label></div>
+    <div class="two-col">
+      <div class="card">
+        <h2>Cierre de caja</h2>
+        <div id="closeStatus"></div>
+        <label>Fondo inicial (efectivo con que abrió la caja)<input id="closeOpening" inputmode="decimal"></label>
+        <table class="calc">
+          <tr><td>Fondo inicial</td><td class="money" id="cOpening"></td></tr>
+          <tr><td>+ Ventas en efectivo</td><td class="money" id="cCashSales"></td></tr>
+          <tr><td>− Gastos pagados de caja</td><td class="money" id="cCashExp"></td></tr>
+          <tr class="result"><td>Debe haber en caja</td><td class="money" id="cExpected"></td></tr>
+        </table>
+        <label>Efectivo contado<input id="closeCounted" inputmode="decimal" placeholder="Cuenta billetes y monedas"></label>
+        <div id="closeDiff" class="diff"></div>
+        <label>Retiro (lo que se saca para depositar o guardar)<input id="closeWithdrawn" inputmode="decimal" placeholder="0"></label>
+        <div class="change">Queda en caja para mañana: <strong id="closeLeft">—</strong></div>
+        <label>Notas (opcional)<input id="closeNotes"></label>
+        <button type="button" class="primary" id="closeSave">Cerrar día</button>
+        <p class="hint" id="closeOther"></p>
+      </div>
+      <div class="card">
+        <h2>Resumen</h2>
+        <div class="seg" id="periodKind">
+          <button type="button" data-kind="day" class="on">Día</button>
+          <button type="button" data-kind="week">Semana</button>
+          <button type="button" data-kind="month">Mes</button>
+        </div>
+        <div class="period-nav">
+          <button type="button" id="periodPrev" aria-label="Anterior">‹</button>
+          <strong id="periodLabel"></strong>
+          <button type="button" id="periodNext" aria-label="Siguiente">›</button>
+        </div>
+        <div id="summaryBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESPALDO -->
+  <section id="tab-backup" class="tab hidden">
+    <div class="card">
+      <h2>Respaldo</h2>
+      <p id="lastBackupText"></p>
+      <p class="hint">Toca "Enviar respaldo", elige tu app de correo y envíatelo a ti mismo. Se adjuntan: el respaldo completo (para restaurar la app) y hojas de cálculo de ventas, inventario, movimientos, gastos y cierres (se abren en Excel o Google Sheets). Si no hay internet, el correo se envía solo cuando vuelva la señal.</p>
+      <div class="row">
+        <button id="shareBackup" class="primary">Enviar respaldo</button>
+        <button id="downloadBackup" class="secondary">Guardar en la tablet</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Restaurar</h2>
+      <p class="hint">Reemplaza todos los productos, inventario y ventas de esta tablet con un archivo de respaldo (el que termina en -respaldo-FECHA.txt).</p>
+      <input type="file" id="restoreFile" accept=".txt,.json,text/plain,application/json">
+    </div>
+    <form id="settingsForm" class="card">
+      <h2>Ajustes</h2>
+      <label>Nombre del negocio<input id="setShopName"></label>
+      <label>Símbolo de moneda<input id="setCurrency"></label>
+      <label>Formas de pago (separadas por coma)<input id="setMethods"></label>
+      <label>Recordar respaldo cada (días)<input id="setReminder" type="number" min="1"></label>
+      <button class="primary" type="submit">Guardar ajustes</button>
+      <p class="hint" id="storageText"></p>
+    </form>
+  </section>
+</main>
+<div id="toast" class="toast hidden"></div>
+<dialog id="askDialog">
+  <h2 id="askTitle"></h2>
+  <p id="askText" class="hint"></p>
+  <input id="askInput" class="hidden" inputmode="decimal" aria-label="Cantidad">
+  <div class="dialog-actions">
+    <button type="button" class="secondary" id="askCancel">Cancelar</button>
+    <button type="button" class="primary" id="askOk">Aceptar</button>
+  </div>
+</dialog>
+<dialog id="priceDialog">
+  <h2 id="priceDialogTitle"></h2>
+  <div id="variantStep">
+    <div class="hint">Elige una opción</div>
+    <div id="variantButtons"></div>
+  </div>
+  <div id="channelStep">
+    <div class="hint" id="channelHint">¿Dónde es la venta?</div>
+    <button type="button" class="choice store" data-channel="tienda"><span>En tienda</span><strong id="priceStore"></strong></button>
+    <button type="button" class="choice" data-channel="delivery"><span>App de delivery</span><strong id="priceDelivery"></strong></button>
+  </div>
+  <div class="dialog-actions">
+    <button type="button" class="secondary hidden" id="priceBack">Atrás</button>
+    <button type="button" class="secondary" id="priceCancel">Cancelar</button>
+  </div>
+</dialog>
+
+<script>
+'use strict';
+const APP_ID = 'simple-pos';
+const DB_NAME = 'pos-db';
+const DB_VERSION = 3;
+const DEFAULT_SETTINGS = { shopName: 'Abastos Brew', currency: '$', paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'App delivery'], reminderDays: 14 };
+const CHANNEL_LABEL = { tienda: 'En tienda', delivery: 'Delivery' };
+// Loaded once on first launch so the menu is ready to use. Everything can be edited or deleted.
+const SEED_PRODUCTS = [
+  ['Espresso', 35, 'Clásicos'], ['Americano', 40, 'Clásicos'], ['Latte', 55, 'Clásicos'], ['Capuccino', 55, 'Clásicos'],
+  ['Dark Abastos Latte (moka)', 65, 'Especialidad'], ['Sweet Street Latte (vainilla)', 65, 'Especialidad'],
+  ['Caramel Flow Latte (caramelo)', 65, 'Especialidad'], ['Avellana Latte', 65, 'Especialidad'],
+  ['Cold Brew Rocas', 50, 'Fríos'], ['Cold Brew + Agua', 50, 'Fríos'], ['Cold Brew + Leche', 60, 'Fríos'],
+  ['Cold Brew Tonic', 70, 'Fríos'], ['Cold Brew + Tonicol', 75, 'Fríos'],
+  ['Matcha Latte', 70, 'Otros'], ['Chai Latte', 70, 'Otros'], ['Dirty Chai', 80, 'Otros']
+];
+const $ = s => document.querySelector(s);
+
+let db, products = [], inventory = [], settings = { ...DEFAULT_SETTINGS }, payment = null;
+const cart = new Map(); // "productId|channel" -> qty   (channel: tienda | delivery)
+
+/* ================= storage (IndexedDB) =================
+   The database lives inside the browser, tied to the site's address.
+   Schema changes go in onupgradeneeded, step by step, so existing data is kept on updates. */
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, DB_VERSION);
+    r.onupgradeneeded = e => {
+      const d = r.result, old = e.oldVersion;
+      if (old < 1) {
+        d.createObjectStore('products', { keyPath: 'id' });
+        d.createObjectStore('sales', { keyPath: 'id' }).createIndex('day', 'day');
+        d.createObjectStore('meta', { keyPath: 'key' });
+      }
+      if (old < 2) {
+        d.createObjectStore('inventory', { keyPath: 'id' });
+        d.createObjectStore('movements', { keyPath: 'id' }).createIndex('createdAt', 'createdAt');
+      }
+      if (old < 3) {
+        d.createObjectStore('expenses', { keyPath: 'id' }).createIndex('day', 'day');
+        d.createObjectStore('closures', { keyPath: 'day' });
+      }
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+const store = (name, mode = 'readonly') => db.transaction(name, mode).objectStore(name);
+const getAll = n => req(store(n).getAll());
+const put = (n, v) => req(store(n, 'readwrite').put(v));
+const getMeta = async k => { const r = await req(store('meta').get(k)); return r ? r.value : undefined; };
+const setMeta = (key, value) => put('meta', { key, value });
+function runTx(stores, fn) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(stores, 'readwrite');
+    fn(t);
+    t.oncomplete = res;
+    t.onerror = () => rej(t.error);
+    t.onabort = () => rej(t.error);
+  });
+}
+// Changes stock and logs one movement per item, inside an open transaction.
+function applyStock(t, changes, type, saleId = null) {
+  const inv = t.objectStore('inventory'), mov = t.objectStore('movements');
+  const now = new Date().toISOString();
+  changes.forEach(({ itemId, delta }) => {
+    if (!delta) return;
+    const g = inv.get(itemId);
+    g.onsuccess = () => {
+      const item = g.result;
+      if (!item) return;
+      item.stock = round3(item.stock + delta);
+      inv.put(item);
+      mov.put({ id: uid(), createdAt: now, itemId, itemName: item.name, unit: item.unit, delta: round3(delta), stockAfter: item.stock, type, saleId });
+    };
+  });
+}
+
+/* ================= helpers ================= */
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const pad = n => String(n).padStart(2, '0');
+const round3 = x => Math.round(x * 1000) / 1000;
+const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const money = c => (c < 0 ? '−' : '') + settings.currency + (Math.abs(c) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtQty = n => Number(n).toLocaleString('es-MX', { maximumFractionDigits: 3 });
+const parseNum = s => { const n = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : NaN; };
+const parseMoney = s => { const n = parseNum(s); return isNaN(n) ? NaN : Math.round(n * 100); }; // money stored as integer cents
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isCash = m => /efectivo|cash|dinheiro|contado/i.test(m || '');
+const fmtDateTime = iso => new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+let toastTimer;
+function toast(msg, ms = 3200) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add('hidden'), ms);
+}
+const byName = (a, b) => a.name.localeCompare(b.name, 'es');
+const sortedProducts = () => [...products].sort((a, b) => (a.category || '').localeCompare(b.category || '', 'es') || byName(a, b));
+const sortedInv = () => [...inventory].sort(byName);
+const invById = id => inventory.find(i => i.id === id);
+const usesItem = (p, itemId) => [...(p.recipe || []), ...(p.variants || []).flatMap(v => v.recipe || [])].some(r => r.itemId === itemId);
+function itemStatus(i) {
+  if (i.stock <= 0) return 'agotado';
+  if (i.lowAt != null && i.stock <= i.lowAt) return 'bajo';
+  return 'ok';
+}
+const STATUS_LABEL = { ok: 'OK', bajo: 'Bajo', agotado: 'Agotado' };
+
+// In-app confirm/prompt: works on the tablet and inside preview links, where the browser's own boxes are blocked.
+// Resolves true/false, or the typed text / null when input: true.
+function ask({ title, text = '', input = false, value = '', ok = 'Aceptar' }) {
+  return new Promise(resolve => {
+    const d = $('#askDialog'), inp = $('#askInput');
+    $('#askTitle').textContent = title;
+    $('#askText').textContent = text;
+    $('#askOk').textContent = ok;
+    inp.classList.toggle('hidden', !input);
+    inp.value = value;
+    let settled = false;
+    const done = v => { if (settled) return; settled = true; d.close(); resolve(v); };
+    $('#askOk').onclick = () => done(input ? inp.value : true);
+    $('#askCancel').onclick = () => done(input ? null : false);
+    d.onclick = e => { if (e.target === d) done(input ? null : false); };
+    d.oncancel = () => done(input ? null : false);
+    inp.onkeydown = e => { if (e.key === 'Enter') done(inp.value); };
+    d.showModal();
+    if (input) { inp.focus(); inp.select(); }
+  });
+}
+
+/* ================= tabs ================= */
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + name));
+  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  if (name === 'sales') renderSales();
+  if (name === 'inventory') renderInventory();
+  if (name === 'backup') renderBackupInfo();
+  if (name === 'expenses') renderExpenses();
+  if (name === 'close') { renderClose(); renderSummary(); }
+  $('#moreBtn').classList.toggle('active', ['products', 'inventory', 'backup'].includes(name));
+  $('#moreMenu').classList.add('hidden');
+  closeCart();
+  window.scrollTo(0, 0);
+}
+$('#moreBtn').addEventListener('click', e => { e.stopPropagation(); $('#moreMenu').classList.toggle('hidden'); });
+document.addEventListener('click', e => { if (!e.target.closest('#moreMenu')) $('#moreMenu').classList.add('hidden'); });
+document.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => showTab(b.dataset.go)));
+
+/* ================= vender ================= */
+let catFilter = '';
+function renderChips() {
+  const cats = [...new Set(sortedProducts().map(p => p.category || 'Sin categoría'))];
+  if (catFilter && !cats.includes(catFilter)) catFilter = '';
+  $('#catChips').innerHTML = cats.length > 1 ? ['', ...cats].map(c =>
+    `<button type="button" data-cat="${esc(c)}" class="${c === catFilter ? 'on' : ''}">${c ? esc(c) : 'Todos'}</button>`).join('') : '';
+}
+$('#catChips').addEventListener('click', e => {
+  const b = e.target.closest('[data-cat]');
+  if (!b) return;
+  catFilter = b.dataset.cat;
+  renderProductGrid();
+});
+function renderProductGrid() {
+  renderChips();
+  const q = $('#productSearch').value.trim().toLowerCase();
+  const list = sortedProducts()
+    .filter(p => !catFilter || (p.category || 'Sin categoría') === catFilter)
+    .filter(p => !q || p.name.toLowerCase().includes(q) || (p.category || '').toLowerCase().includes(q));
+  $('#noProducts').classList.toggle('hidden', products.length > 0);
+  const groups = new Map();
+  list.forEach(p => { const c = p.category || 'Sin categoría'; if (!groups.has(c)) groups.set(c, []); groups.get(c).push(p); });
+  $('#productGrid').innerHTML = [...groups].map(([cat, ps]) =>
+    `<h3 class="cat-title"><span>✱</span>${esc(cat)}</h3><div class="grid">${ps.map(p => {
+      const out = (p.recipe || []).map(r => invById(r.itemId)).filter(i => i && i.stock <= 0);
+      return `<button class="prod" data-add="${p.id}"><span>${esc(p.name)}</span>
+        ${variantsOf(p).length ? `<span class="dprice">${variantsOf(p).length} opciones</span>` : ''}
+        ${out.length ? `<span class="tile-warn">Sin ${esc(out.map(i => i.name).join(', '))}</span>` : ''}
+        <span class="prices"><span class="price">${money(p.price)}</span>${hasDelivery(p) ? `<span class="dprice">Delivery ${money(p.deliveryPrice)}</span>` : ''}</span></button>`;
+    }).join('')}</div>`
+  ).join('');
+}
+$('#productSearch').addEventListener('input', renderProductGrid);
+const hasDelivery = p => p.deliveryPrice != null && !isNaN(p.deliveryPrice);
+const variantsOf = p => p.variants || [];
+const variantOf = (p, vid) => variantsOf(p).find(v => v.id === vid) || null;
+const basePrice = (p, channel) => (channel === 'delivery' && hasDelivery(p) ? p.deliveryPrice : p.price);
+const unitPrice = (p, channel, v) => basePrice(p, channel) + (v ? v.extra || 0 : 0);
+function addToCart(productId, channel, variantId = '') {
+  const key = `${productId}|${channel}|${variantId || ''}`;
+  cart.set(key, (cart.get(key) || 0) + 1);
+  renderCart();
+  bumpCartBar();
+}
+// Tap flow: variant (if the product has any) → store/delivery (if it has a delivery price) → cart.
+const pick = { productId: null, variantId: '' };
+const dialog = $('#priceDialog');
+const pickedProduct = () => products.find(x => x.id === pick.productId);
+function showVariantStep() {
+  const p = pickedProduct();
+  $('#variantStep').classList.remove('hidden');
+  $('#channelStep').classList.add('hidden');
+  $('#priceBack').classList.add('hidden');
+  $('#variantButtons').innerHTML = variantsOf(p).map(v =>
+    `<button type="button" class="choice" data-variant="${v.id}"><span>${esc(v.name)}</span><strong>${v.extra ? '+' + money(v.extra) : ''}</strong></button>`
+  ).join('');
+}
+function showChannelStep() {
+  const p = pickedProduct(), v = variantOf(p, pick.variantId);
+  $('#variantStep').classList.add('hidden');
+  $('#channelStep').classList.remove('hidden');
+  $('#priceBack').classList.toggle('hidden', !variantsOf(p).length);
+  $('#channelHint').textContent = v ? `${v.name} · ¿Dónde es la venta?` : '¿Dónde es la venta?';
+  $('#priceStore').textContent = money(unitPrice(p, 'tienda', v));
+  $('#priceDelivery').textContent = money(unitPrice(p, 'delivery', v));
+}
+$('#productGrid').addEventListener('click', e => {
+  const b = e.target.closest('[data-add]');
+  if (!b) return;
+  const p = products.find(x => x.id === b.dataset.add);
+  if (!variantsOf(p).length && !hasDelivery(p)) return addToCart(p.id, 'tienda');
+  pick.productId = p.id; pick.variantId = '';
+  $('#priceDialogTitle').textContent = p.name;
+  variantsOf(p).length ? showVariantStep() : showChannelStep();
+  dialog.showModal();
+});
+dialog.addEventListener('click', e => {
+  const v = e.target.closest('[data-variant]'), c = e.target.closest('[data-channel]');
+  if (v) {
+    pick.variantId = v.dataset.variant;
+    if (hasDelivery(pickedProduct())) return showChannelStep();
+    addToCart(pick.productId, 'tienda', pick.variantId);
+    return dialog.close();
+  }
+  if (c) { addToCart(pick.productId, c.dataset.channel, pick.variantId); return dialog.close(); }
+  if (e.target.id === 'priceBack') return showVariantStep();
+  if (e.target.id === 'priceCancel' || e.target === dialog) dialog.close(); // tap outside also closes
+});
+
+const cartItems = () => [...cart].map(([key, qty]) => {
+  const [id, channel, vid] = key.split('|');
+  const p = products.find(x => x.id === id);
+  if (!p) return null;
+  const v = variantOf(p, vid);
+  return { key, p, v, channel, qty, price: unitPrice(p, channel, v) };
+}).filter(Boolean);
+const cartTotal = () => cartItems().reduce((s, i) => s + i.price * i.qty, 0);
+function cartConsumption() {
+  const need = new Map();
+  cartItems().forEach(({ p, v, qty }) => [...(p.recipe || []), ...(v ? v.recipe || [] : [])]
+    .forEach(r => need.set(r.itemId, round3((need.get(r.itemId) || 0) + r.qty * qty))));
+  return [...need].map(([itemId, qty]) => ({ itemId, name: invById(itemId)?.name || '?', qty })).filter(c => invById(c.itemId));
+}
+
+function renderCart() {
+  const items = cartItems();
+  $('#cartList').innerHTML = items.length ? items.map(({ key, p, v, channel, qty, price }) =>
+    `<li class="cart-item"><span class="name">${esc(p.name)}${v ? ` · ${esc(v.name)}` : ''}${channel === 'delivery' ? '<span class="chan">Delivery</span>' : ''}<br><span class="hint">${money(price)} c/u</span></span>
+     <span class="qty"><button data-dec="${key}" aria-label="Menos">−</button><strong>${qty}</strong><button data-inc="${key}" aria-label="Más">+</button></span>
+     <strong>${money(price * qty)}</strong></li>`
+  ).join('') : '<li class="hint" style="padding:8px 0">Toca productos para agregarlos.</li>';
+  const short = cartConsumption().map(c => ({ c, i: invById(c.itemId) })).filter(({ c, i }) => i.stock < c.qty);
+  $('#cartStockWarn').classList.toggle('hidden', !short.length);
+  $('#cartStockWarn').textContent = short.length
+    ? 'Inventario insuficiente: ' + short.map(({ c, i }) => `${i.name} (hay ${fmtQty(i.stock)}, se usan ${fmtQty(c.qty)})`).join('; ') + '. Puedes cobrar igual.'
+    : '';
+  $('#cartTotal').textContent = money(cartTotal());
+  $('#paymentButtons').innerHTML = settings.paymentMethods.map(m =>
+    `<button data-pay="${esc(m)}" class="${m === payment ? 'on' : ''}">${esc(m)}</button>`).join('');
+  $('#cashBox').classList.toggle('hidden', !isCash(payment));
+  updateChange();
+  const n = items.reduce((t, i) => t + i.qty, 0);
+  $('#cartBar').classList.toggle('hidden', n === 0);
+  $('#cartBarCount').textContent = `${n} producto${n === 1 ? '' : 's'}`;
+  $('#cartBarTotal').textContent = money(cartTotal());
+  if (!n) closeCart();
+}
+// Phone layout: the cart is a bottom sheet opened from the bar.
+const openCart = () => document.body.classList.add('cart-open');
+const closeCart = () => document.body.classList.remove('cart-open');
+$('#cartBar').addEventListener('click', openCart);
+$('#cartClose').addEventListener('click', closeCart);
+$('#cartBackdrop').addEventListener('click', closeCart);
+function bumpCartBar() {
+  const b = $('#cartBar');
+  b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+}
+function updateChange() {
+  const r = parseMoney($('#cashReceived').value);
+  const total = cartTotal();
+  $('#changeDue').textContent = isNaN(r) ? '—' : (r < total ? 'Falta dinero' : money(r - total));
+}
+$('#cashReceived').addEventListener('input', updateChange);
+$('#cartList').addEventListener('click', e => {
+  const inc = e.target.closest('[data-inc]'), dec = e.target.closest('[data-dec]');
+  if (inc) cart.set(inc.dataset.inc, cart.get(inc.dataset.inc) + 1);
+  if (dec) {
+    const q = cart.get(dec.dataset.dec) - 1;
+    q > 0 ? cart.set(dec.dataset.dec, q) : cart.delete(dec.dataset.dec);
+  }
+  if (inc || dec) renderCart();
+});
+$('#paymentButtons').addEventListener('click', e => {
+  const b = e.target.closest('[data-pay]');
+  if (!b) return;
+  payment = b.dataset.pay;
+  renderCart();
+});
+$('#clearCart').addEventListener('click', () => { cart.clear(); payment = null; $('#cashReceived').value = ''; renderCart(); });
+$('#completeSale').addEventListener('click', async () => {
+  const items = cartItems();
+  if (!items.length) return toast('Agrega al menos un producto.');
+  if (!payment) return toast('Elige la forma de pago.');
+  const total = cartTotal();
+  let cashReceived = null, change = null;
+  if (isCash(payment)) {
+    const r = parseMoney($('#cashReceived').value);
+    if (!isNaN(r)) {
+      if (r < total) return toast('El efectivo recibido es menor al total.');
+      cashReceived = r; change = r - total;
+    }
+  }
+  const now = new Date();
+  const consumption = cartConsumption();
+  const sale = {
+    id: uid(), createdAt: now.toISOString(), day: localDay(now),
+    items: items.map(({ p, v, channel, qty, price }) => ({ productId: p.id, name: p.name, variantId: v ? v.id : null, variant: v ? v.name : null, channel, unitPrice: price, qty })),
+    total, paymentMethod: payment, cashReceived, change, voided: false,
+    consumption // exactly what was taken from inventory, so voiding can give it back
+  };
+  await runTx(['sales', 'inventory', 'movements'], t => {
+    t.objectStore('sales').put(sale);
+    applyStock(t, consumption.map(c => ({ itemId: c.itemId, delta: -c.qty })), 'venta', sale.id);
+  });
+  inventory = await getAll('inventory');
+  cart.clear(); payment = null; $('#cashReceived').value = '';
+  renderCart(); renderProductGrid();
+  const alerts = consumption.map(c => invById(c.itemId)).filter(i => i && itemStatus(i) !== 'ok')
+    .map(i => `quedan ${fmtQty(i.stock)} ${i.unit} de ${i.name}`);
+  let msg = change != null ? `Venta guardada. Cambio: ${money(change)}` : 'Venta guardada.';
+  if (alerts.length) msg += ' ⚠ ' + alerts.join('; ');
+  toast(msg, alerts.length ? 6000 : 3200);
+  checkBackupReminder();
+});
+
+/* ================= ventas ================= */
+async function renderSales() {
+  const day = $('#salesDate').value || localDay();
+  const sales = (await req(store('sales').index('day').getAll(day))).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const active = sales.filter(s => !s.voided);
+  const total = active.reduce((s, x) => s + x.total, 0);
+  const byMethod = {}, byChannel = { tienda: 0, delivery: 0 };
+  active.forEach(s => {
+    byMethod[s.paymentMethod] = (byMethod[s.paymentMethod] || 0) + s.total;
+    s.items.forEach(i => { byChannel[i.channel || 'tienda'] += i.unitPrice * i.qty; });
+  });
+  $('#salesSummary').innerHTML =
+    `<div class="stat"><div class="k">Total del día</div><div class="v">${money(total)}</div></div>
+     <div class="stat"><div class="k">Ventas</div><div class="v">${active.length}</div></div>
+     <div class="stat"><div class="k">En tienda</div><div class="v">${money(byChannel.tienda)}</div></div>
+     <div class="stat"><div class="k">Delivery</div><div class="v">${money(byChannel.delivery)}</div></div>` +
+    Object.entries(byMethod).map(([m, v]) => `<div class="stat"><div class="k">${esc(m)}</div><div class="v">${money(v)}</div></div>`).join('');
+  $('#salesList').innerHTML = sales.length ? sales.map(s => {
+    const time = new Date(s.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    return `<li class="${s.voided ? 'voided' : ''}"><div>
+      <div><strong class="amt">${money(s.total)}</strong> · ${esc(s.paymentMethod)}${s.voided ? ' · ANULADA' : ''}</div>
+      <div class="meta">${time} — ${esc(s.items.map(i => `${i.qty}× ${i.name}${i.variant ? ` (${i.variant})` : ''}${i.channel === 'delivery' ? ' · delivery' : ''}`).join(', '))}</div></div>
+      <button class="danger" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></li>`;
+  }).join('') : '<li class="empty">No hay ventas este día.</li>';
+}
+$('#salesDate').addEventListener('change', renderSales);
+$('#salesList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-void]');
+  if (!b) return;
+  const sale = await req(store('sales').get(b.dataset.void));
+  if (!sale.voided && !(await ask({ title: '¿Anular esta venta?', text: 'Ya no contará en los totales y los insumos regresan al inventario.', ok: 'Anular' }))) return;
+  sale.voided = !sale.voided;
+  await runTx(['sales', 'inventory', 'movements'], t => {
+    t.objectStore('sales').put(sale);
+    applyStock(t, (sale.consumption || []).map(c => ({ itemId: c.itemId, delta: sale.voided ? c.qty : -c.qty })),
+      sale.voided ? 'anulación' : 'reactivación', sale.id);
+  });
+  inventory = await getAll('inventory');
+  renderSales(); renderProductGrid();
+});
+
+/* ================= productos ================= */
+function recipeText(p) {
+  const parts = (p.recipe || []).map(r => { const i = invById(r.itemId); return i ? `${fmtQty(r.qty)} ${i.unit} ${i.name}` : null; }).filter(Boolean);
+  let t = parts.length ? 'Descuenta: ' + parts.join(', ') : 'No descuenta inventario';
+  if (variantsOf(p).length) t += ' · Variantes: ' + variantsOf(p).map(v => v.name + (v.extra ? ` (+${money(v.extra)})` : '')).join(', ');
+  return t;
+}
+function addVariantRow(v = {}) {
+  const div = document.createElement('div');
+  div.className = 'variant-row';
+  div.dataset.vid = v.id || '';
+  const r = (v.recipe || [])[0] || {};
+  div.innerHTML = `<div class="vr-top">
+      <input class="vName" placeholder="Nombre, ej. Vainilla" value="${esc(v.name || '')}" aria-label="Nombre de la variante">
+      <input class="vExtra" inputmode="decimal" placeholder="Precio extra" value="${v.extra ? (v.extra / 100).toFixed(2) : ''}" aria-label="Precio extra">
+      <button type="button" class="icon-btn vDel" aria-label="Quitar">✕</button></div>
+    <div class="vr-bottom">
+      <select class="vItem" aria-label="Insumo extra"><option value="">Sin insumo extra</option>${sortedInv().map(i =>
+        `<option value="${i.id}"${i.id === r.itemId ? ' selected' : ''}>Usa también: ${esc(i.name)} (${esc(i.unit)})</option>`).join('')}</select>
+      <input class="vQty" inputmode="decimal" value="${esc(r.qty ?? 1)}" aria-label="Cantidad"></div>`;
+  $('#variantRows').append(div);
+}
+$('#addVariantRow').addEventListener('click', () => addVariantRow());
+$('#variantRows').addEventListener('click', e => { const b = e.target.closest('.vDel'); if (b) b.closest('.variant-row').remove(); });
+function readVariants() {
+  const out = [];
+  for (const row of document.querySelectorAll('#variantRows .variant-row')) {
+    const name = row.querySelector('.vName').value.trim();
+    const extraRaw = row.querySelector('.vExtra').value.trim();
+    const itemId = row.querySelector('.vItem').value, qty = parseNum(row.querySelector('.vQty').value);
+    if (!name && !extraRaw && !itemId) continue; // empty row
+    if (!name) return { error: 'Cada variante necesita un nombre.' };
+    const extra = extraRaw === '' ? 0 : parseMoney(extraRaw);
+    if (isNaN(extra) || extra < 0) return { error: `Precio extra no válido en "${name}".` };
+    out.push({ id: row.dataset.vid || uid(), name, extra, recipe: itemId && qty > 0 ? [{ itemId, qty: round3(qty) }] : [] });
+  }
+  return { variants: out };
+}
+function renderProductList() {
+  $('#categoryList').innerHTML = [...new Set(products.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('');
+  $('#productList').innerHTML = products.length ? sortedProducts().map(p =>
+    `<li><div class="item-main"><strong>${esc(p.name)}</strong> — <span class="price-txt">Tienda ${money(p.price)}${hasDelivery(p) ? ` · Delivery ${money(p.deliveryPrice)}` : ''}</span>
+       <div class="meta">${p.category ? esc(p.category) + ' · ' : ''}${esc(recipeText(p))}</div></div>
+     <div class="row"><button class="secondary" data-edit="${p.id}">Editar</button><button class="danger" data-del="${p.id}">Eliminar</button></div></li>`
+  ).join('') : '<li class="empty">Aún no hay productos.</li>';
+  renderRecipeHint();
+}
+function renderRecipeHint() {
+  const none = inventory.length === 0;
+  $('#addRecipeRow').disabled = none;
+  $('#recipeHint').textContent = none
+    ? 'Primero crea insumos (vasos, tapas, leche…) en la pestaña Inventario.'
+    : 'Ej.: un Latte grande descuenta 1 Vaso 16 oz y 1 Tapa. Puedes dejarlo vacío.';
+}
+function addRecipeRow(itemId = '', qty = 1) {
+  const div = document.createElement('div');
+  div.className = 'recipe-row';
+  div.innerHTML = `<select class="rItem"><option value="">Elegir insumo…</option>${sortedInv().map(i =>
+      `<option value="${i.id}"${i.id === itemId ? ' selected' : ''}>${esc(i.name)} (${esc(i.unit)})</option>`).join('')}</select>
+    <input class="rQty" inputmode="decimal" value="${esc(qty)}" aria-label="Cantidad">
+    <button type="button" class="icon-btn rDel" aria-label="Quitar">✕</button>`;
+  $('#recipeRows').append(div);
+}
+$('#addRecipeRow').addEventListener('click', () => addRecipeRow());
+$('#recipeRows').addEventListener('click', e => { const b = e.target.closest('.rDel'); if (b) b.parentElement.remove(); });
+function readRecipe() {
+  const m = new Map();
+  document.querySelectorAll('#recipeRows .recipe-row').forEach(row => {
+    const itemId = row.querySelector('.rItem').value, qty = parseNum(row.querySelector('.rQty').value);
+    if (itemId && qty > 0) m.set(itemId, round3((m.get(itemId) || 0) + qty));
+  });
+  return [...m].map(([itemId, qty]) => ({ itemId, qty }));
+}
+function resetProductForm() {
+  $('#productForm').reset(); $('#productId').value = ''; $('#recipeRows').innerHTML = ''; $('#variantRows').innerHTML = '';
+  $('#productFormTitle').textContent = 'Nuevo producto';
+  $('#productSave').textContent = 'Agregar producto';
+  $('#productCancel').classList.add('hidden');
+}
+$('#productForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('#productName').value.trim();
+  const price = parseMoney($('#productPrice').value);
+  if (!name) return toast('Escribe un nombre.');
+  if (isNaN(price) || price < 0) return toast('Escribe un precio válido, ej. 55 o 55.50');
+  const dRaw = $('#productDeliveryPrice').value.trim();
+  const deliveryPrice = dRaw === '' ? null : parseMoney(dRaw);
+  if (deliveryPrice !== null && (isNaN(deliveryPrice) || deliveryPrice < 0)) return toast('El precio de delivery no es válido.');
+  const { variants, error } = readVariants();
+  if (error) return toast(error);
+  const p = { id: $('#productId').value || uid(), name, price, deliveryPrice, category: $('#productCategory').value.trim(), recipe: readRecipe(), variants };
+  await put('products', p);
+  products = await getAll('products');
+  resetProductForm();
+  renderProductList(); renderProductGrid(); renderCart();
+  toast('Producto guardado.');
+});
+$('#productCancel').addEventListener('click', resetProductForm);
+$('#productList').addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit]'), dl = e.target.closest('[data-del]');
+  if (ed) {
+    const p = products.find(x => x.id === ed.dataset.edit);
+    resetProductForm();
+    $('#productId').value = p.id; $('#productName').value = p.name;
+    $('#productPrice').value = (p.price / 100).toFixed(2); $('#productCategory').value = p.category || '';
+    $('#productDeliveryPrice').value = hasDelivery(p) ? (p.deliveryPrice / 100).toFixed(2) : '';
+    (p.recipe || []).filter(r => invById(r.itemId)).forEach(r => addRecipeRow(r.itemId, r.qty));
+    variantsOf(p).forEach(v => addVariantRow(v));
+    $('#productFormTitle').textContent = 'Editar producto';
+    $('#productSave').textContent = 'Guardar cambios';
+    $('#productCancel').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  if (dl) {
+    const p = products.find(x => x.id === dl.dataset.del);
+    if (!(await ask({ title: `¿Eliminar "${p.name}"?`, text: 'Las ventas anteriores se conservan.', ok: 'Eliminar' }))) return;
+    await req(store('products', 'readwrite').delete(p.id));
+    [...cart.keys()].filter(k => k.startsWith(p.id + '|')).forEach(k => cart.delete(k));
+    products = await getAll('products');
+    renderProductList(); renderProductGrid(); renderCart();
+  }
+});
+
+/* ================= inventario ================= */
+function recentMovements(n) {
+  return new Promise((res, rej) => {
+    const out = [];
+    const r = store('movements').index('createdAt').openCursor(null, 'prev');
+    r.onsuccess = () => { const c = r.result; if (c && out.length < n) { out.push(c.value); c.continue(); } else res(out); };
+    r.onerror = () => rej(r.error);
+  });
+}
+async function renderInventory() {
+  const counts = { bajo: 0, agotado: 0 };
+  inventory.forEach(i => { const s = itemStatus(i); if (s !== 'ok') counts[s]++; });
+  $('#invSummary').innerHTML =
+    `<div class="stat"><div class="k">Insumos</div><div class="v">${inventory.length}</div></div>
+     <div class="stat"><div class="k">Stock bajo</div><div class="v">${counts.bajo}</div></div>
+     <div class="stat"><div class="k">Agotados</div><div class="v">${counts.agotado}</div></div>`;
+  const rank = { agotado: 0, bajo: 1, ok: 2 };
+  const list = sortedInv().sort((a, b) => rank[itemStatus(a)] - rank[itemStatus(b)]);
+  $('#itemList').innerHTML = list.length ? list.map(i => {
+    const s = itemStatus(i);
+    const usedIn = products.filter(p => usesItem(p, i.id)).map(p => p.name);
+    return `<li><div class="item-main">
+        <div><strong>${esc(i.name)}</strong> <span class="pill ${s}">${STATUS_LABEL[s]}</span></div>
+        <div class="stock-big">${fmtQty(i.stock)} <span class="meta">${esc(i.unit)}</span></div>
+        <div class="meta">${i.lowAt != null ? `Aviso en ${fmtQty(i.lowAt)} ${esc(i.unit)} · ` : ''}${usedIn.length ? 'Se usa en: ' + esc(usedIn.join(', ')) : 'Ningún producto lo usa todavía'}</div>
+      </div>
+      <div class="row">
+        <button class="primary" data-in="${i.id}">+ Entrada</button>
+        <button class="secondary" data-count="${i.id}">Conteo</button>
+        <button class="secondary" data-iedit="${i.id}">Editar</button>
+        <button class="danger" data-idel="${i.id}">Eliminar</button>
+      </div></li>`;
+  }).join('') : '<li class="empty">Aún no hay insumos. Agrega el primero abajo (por ejemplo, vasos).</li>';
+  const TYPE = { venta: 'Venta', entrada: 'Entrada', ajuste: 'Conteo', alta: 'Alta', 'anulación': 'Venta anulada', 'reactivación': 'Venta reactivada' };
+  const movs = await recentMovements(40);
+  $('#movementList').innerHTML = movs.length ? movs.map(m =>
+    `<li><span><span class="meta">${fmtDateTime(m.createdAt)}</span> · ${esc(TYPE[m.type] || m.type)} · ${esc(m.itemName)}</span>
+     <span><span class="${m.delta >= 0 ? 'pos' : 'neg'}">${m.delta >= 0 ? '+' : ''}${fmtQty(m.delta)} ${esc(m.unit)}</span> <span class="meta">→ ${fmtQty(m.stockAfter)}</span></span></li>`
+  ).join('') : '<li class="hint">Sin movimientos todavía.</li>';
+}
+function resetItemForm() {
+  $('#itemForm').reset(); $('#itemId').value = ''; $('#itemUnit').value = 'pza'; $('#itemStock').value = '0';
+  $('#itemStockLabel').classList.remove('hidden');
+  $('#itemFormTitle').textContent = 'Nuevo insumo';
+  $('#itemSave').textContent = 'Agregar insumo';
+  $('#itemCancel').classList.add('hidden');
+}
+async function refreshAfterInventoryChange() {
+  inventory = await getAll('inventory');
+  products = await getAll('products');
+  renderInventory(); renderProductGrid(); renderProductList(); renderCart();
+}
+$('#itemForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = $('#itemName').value.trim(), unit = $('#itemUnit').value.trim() || 'pza';
+  const lowRaw = $('#itemLow').value.trim(), lowAt = lowRaw === '' ? null : parseNum(lowRaw);
+  if (!name) return toast('Escribe un nombre.');
+  if (lowAt !== null && (isNaN(lowAt) || lowAt < 0)) return toast('El aviso debe ser un número.');
+  const id = $('#itemId').value;
+  if (id) {
+    const item = invById(id);
+    await put('inventory', { ...item, name, unit, lowAt });
+  } else {
+    const stock = parseNum($('#itemStock').value || '0');
+    if (isNaN(stock)) return toast('La existencia debe ser un número.');
+    const item = { id: uid(), name, unit, stock: 0, lowAt, createdAt: new Date().toISOString() };
+    await runTx(['inventory', 'movements'], t => {
+      t.objectStore('inventory').put(item);
+      applyStock(t, [{ itemId: item.id, delta: stock }], 'alta');
+    });
+  }
+  resetItemForm();
+  await refreshAfterInventoryChange();
+  toast('Insumo guardado.');
+});
+$('#itemCancel').addEventListener('click', resetItemForm);
+$('#itemList').addEventListener('click', async e => {
+  const bIn = e.target.closest('[data-in]'), bCount = e.target.closest('[data-count]');
+  const bEdit = e.target.closest('[data-iedit]'), bDel = e.target.closest('[data-idel]');
+  if (bIn) {
+    const i = invById(bIn.dataset.in);
+    const q = parseNum(await ask({ title: `Entrada: ${i.name}`, text: `¿Cuántos ${i.unit} entraron?`, input: true, ok: 'Registrar' }));
+    if (!(q > 0)) return;
+    await runTx(['inventory', 'movements'], t => applyStock(t, [{ itemId: i.id, delta: q }], 'entrada'));
+    await refreshAfterInventoryChange();
+    toast(`Entrada registrada: +${fmtQty(q)} ${i.unit}`);
+  }
+  if (bCount) {
+    const i = invById(bCount.dataset.count);
+    const raw = await ask({ title: `Conteo: ${i.name}`, text: `Cuenta lo que hay físicamente. ¿Cuántos ${i.unit} hay?`, input: true, value: String(i.stock), ok: 'Guardar conteo' });
+    if (raw === null) return;
+    const real = parseNum(raw);
+    if (isNaN(real) || real < 0) return toast('Escribe un número válido.');
+    const delta = round3(real - i.stock);
+    if (!delta) return toast('Sin cambios.');
+    await runTx(['inventory', 'movements'], t => applyStock(t, [{ itemId: i.id, delta }], 'ajuste'));
+    await refreshAfterInventoryChange();
+    toast(`Inventario ajustado a ${fmtQty(real)} ${i.unit}.`);
+  }
+  if (bEdit) {
+    const i = invById(bEdit.dataset.iedit);
+    resetItemForm();
+    $('#itemId').value = i.id; $('#itemName').value = i.name; $('#itemUnit').value = i.unit;
+    $('#itemLow').value = i.lowAt ?? '';
+    $('#itemStockLabel').classList.add('hidden'); // stock changes only through Entrada / Conteo, so every change is logged
+    $('#itemFormTitle').textContent = 'Editar insumo';
+    $('#itemSave').textContent = 'Guardar cambios';
+    $('#itemCancel').classList.remove('hidden');
+    $('#itemForm').scrollIntoView({ behavior: 'smooth' });
+  }
+  if (bDel) {
+    const i = invById(bDel.dataset.idel);
+    const users = products.filter(p => usesItem(p, i.id));
+    const extra = users.length ? ` También se quitará de ${users.length} producto(s).` : '';
+    if (!(await ask({ title: `¿Eliminar "${i.name}"?`, text: extra.trim() || 'Se borrará este insumo.', ok: 'Eliminar' }))) return;
+    const strip = rec => (rec || []).filter(r => r.itemId !== i.id);
+    await runTx(['inventory', 'products'], t => {
+      t.objectStore('inventory').delete(i.id);
+      users.forEach(p => t.objectStore('products').put({ ...p, recipe: strip(p.recipe), variants: variantsOf(p).map(v => ({ ...v, recipe: strip(v.recipe) })) }));
+    });
+    await refreshAfterInventoryChange();
+  }
+});
+
+/* ================= respaldo ================= */
+function csvCell(v) {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+const toCsv = rows => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\n'); // BOM so Excel reads accents
+async function buildExport() {
+  const [p, inv, mov, s, exp, clo] = await Promise.all([getAll('products'), getAll('inventory'), getAll('movements'), getAll('sales'), getAll('expenses'), getAll('closures')]);
+  exp.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  clo.sort((a, b) => a.day.localeCompare(b.day));
+  s.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  mov.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const stamp = localDay();
+  const slug = settings.shopName.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'negocio';
+  const json = JSON.stringify({ app: APP_ID, format: 3, exportedAt: new Date().toISOString(), settings, products: p, inventory: inv, movements: mov, sales: s, expenses: exp, closures: clo });
+  const hm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const sales = [['venta_id', 'fecha', 'hora', 'producto', 'variante', 'canal', 'cantidad', 'precio_unitario', 'importe', 'total_venta', 'forma_pago', 'anulada']];
+  s.forEach(sale => sale.items.forEach(i => sales.push([
+    sale.id, sale.day, hm(sale.createdAt), i.name, i.variant || '', CHANNEL_LABEL[i.channel || 'tienda'], i.qty, (i.unitPrice / 100).toFixed(2), (i.unitPrice * i.qty / 100).toFixed(2),
+    (sale.total / 100).toFixed(2), sale.paymentMethod, sale.voided ? 'si' : 'no'
+  ])));
+  const invRows = [['insumo', 'unidad', 'existencia', 'avisar_en', 'estado']];
+  inv.sort(byName).forEach(i => invRows.push([i.name, i.unit, i.stock, i.lowAt ?? '', STATUS_LABEL[itemStatus(i)]]));
+  const movRows = [['fecha', 'hora', 'tipo', 'insumo', 'cantidad', 'unidad', 'existencia_despues', 'venta_id']];
+  mov.forEach(m => movRows.push([localDay(new Date(m.createdAt)), hm(m.createdAt), m.type, m.itemName, m.delta, m.unit, m.stockAfter, m.saleId || '']));
+  const c2 = v => (v == null ? '' : (v / 100).toFixed(2));
+  const expRows = [['fecha', 'concepto', 'categoria', 'monto', 'pagado_con']];
+  exp.forEach(e => expRows.push([e.day, e.concept, e.category, c2(e.amount), e.paidFrom === 'caja' ? 'Caja' : 'Otro']));
+  const cloRows = [['fecha', 'fondo_inicial', 'ventas_efectivo', 'gastos_caja', 'esperado', 'contado', 'diferencia', 'retiro', 'queda_en_caja', 'notas']];
+  clo.forEach(c => cloRows.push([c.day, c2(c.openingCash), c2(c.cashSales), c2(c.cashExpenses), c2(c.expected), c2(c.counted), c2(c.difference), c2(c.withdrawn), c2(c.leftInRegister), c.notes || '']));
+  // Full backup is JSON saved as .txt: Chrome on Android won't share .json files, but .txt is allowed.
+  return [
+    new File([json], `${slug}-respaldo-${stamp}.txt`, { type: 'text/plain' }),
+    new File([toCsv(sales)], `${slug}-ventas-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(invRows)], `${slug}-inventario-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(movRows)], `${slug}-movimientos-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(expRows)], `${slug}-gastos-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(cloRows)], `${slug}-cierres-${stamp}.csv`, { type: 'text/csv' })
+  ];
+}
+function downloadFiles(files) {
+  files.forEach((f, i) => setTimeout(() => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(f); a.download = f.name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, i * 400));
+}
+async function markBackedUp() {
+  await setMeta('lastBackup', new Date().toISOString());
+  renderBackupInfo(); checkBackupReminder();
+}
+$('#shareBackup').addEventListener('click', async () => {
+  const files = await buildExport();
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try {
+      await navigator.share({ files, title: `Respaldo ${settings.shopName}`, text: `Respaldo de ${settings.shopName} — ${new Date().toLocaleString('es-MX')}` });
+      await markBackedUp();
+      toast('Respaldo compartido.');
+    } catch (err) {
+      if (err.name === 'AbortError') return; // closed the share menu
+      downloadFiles(files); await markBackedUp();
+      toast('No se pudo compartir; los archivos se guardaron en Descargas.');
+    }
+  } else {
+    downloadFiles(files); await markBackedUp();
+    toast('Archivos guardados en Descargas. Adjúntalos a un correo.');
+  }
+});
+$('#downloadBackup').addEventListener('click', async () => {
+  downloadFiles(await buildExport()); await markBackedUp();
+  toast('Archivos guardados en Descargas.');
+});
+async function renderBackupInfo() {
+  const last = await getMeta('lastBackup');
+  $('#lastBackupText').textContent = last ? `Último respaldo: ${new Date(last).toLocaleString('es-MX')}` : 'Todavía no se ha enviado ningún respaldo.';
+}
+async function checkBackupReminder() {
+  const count = await req(store('sales').count());
+  const last = await getMeta('lastBackup');
+  const since = new Date(last || (await getMeta('firstUse')) || Date.now());
+  const days = Math.floor((Date.now() - since) / 864e5);
+  const due = count > 0 && days >= settings.reminderDays;
+  $('#backupBanner').classList.toggle('hidden', !due);
+  if (due) $('#backupBannerText').textContent = last ? `Tu último respaldo fue hace ${days} días.` : 'Aún no has enviado ningún respaldo.';
+}
+$('#restoreFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { return toast('Ese archivo no es un respaldo válido.'); }
+  if (!data || data.app !== APP_ID || !Array.isArray(data.products) || !Array.isArray(data.sales)) return toast('Ese archivo no es un respaldo válido.');
+  const inv = data.inventory || [], mov = data.movements || [], exps = data.expenses || [], clos = data.closures || [];
+  const when = data.exportedAt ? new Date(data.exportedAt).toLocaleString('es-MX') : 'fecha desconocida';
+  if (!(await ask({ title: '¿Reemplazar todos los datos?', text: `Se usará el respaldo del ${when}: ${data.products.length} productos, ${inv.length} insumos y ${data.sales.length} ventas. Lo que hay ahora en esta tablet se borra.`, ok: 'Restaurar' }))) return;
+  await runTx(['products', 'sales', 'inventory', 'movements', 'expenses', 'closures', 'meta'], t => {
+    ['products', 'sales', 'inventory', 'movements', 'expenses', 'closures'].forEach(n => t.objectStore(n).clear());
+    exps.forEach(e => t.objectStore('expenses').put(e));
+    clos.forEach(c => t.objectStore('closures').put(c));
+    data.products.forEach(p => t.objectStore('products').put(p));
+    data.sales.forEach(s => t.objectStore('sales').put(s));
+    inv.forEach(i => t.objectStore('inventory').put(i));
+    mov.forEach(m => t.objectStore('movements').put(m));
+    if (data.settings) t.objectStore('meta').put({ key: 'settings', value: data.settings });
+  });
+  await loadState();
+  toast('Respaldo restaurado.');
+});
+
+/* ================= fechas y rangos ================= */
+const parseDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parseDay(s); d.setDate(d.getDate() + n); return localDay(d); };
+const rangeReq = (name, from, to) => req(store(name).index('day').getAll(IDBKeyRange.bound(from, to)));
+const daysBetween = (from, to) => { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; };
+const longDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+const shortDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+
+/* ================= gastos ================= */
+const DEFAULT_EXP_CATEGORIES = ['Insumos', 'Renta', 'Servicios (luz, agua, gas)', 'Sueldos', 'Mantenimiento', 'Limpieza', 'Otros'];
+async function renderExpenses() {
+  const day = $('#expDate').value || localDay();
+  const list = (await rangeReq('expenses', day, day)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const all = await getAll('expenses');
+  $('#expCategoryList').innerHTML = [...new Set([...DEFAULT_EXP_CATEGORIES, ...all.map(e => e.category).filter(Boolean)])].map(c => `<option value="${esc(c)}">`).join('');
+  const total = list.reduce((s, e) => s + e.amount, 0), fromCash = list.filter(e => e.paidFrom === 'caja').reduce((s, e) => s + e.amount, 0);
+  $('#expSummary').innerHTML =
+    `<div class="stat"><div class="k">Gastos del día</div><div class="v">${money(total)}</div></div>
+     <div class="stat"><div class="k">Pagados de caja</div><div class="v">${money(fromCash)}</div></div>
+     <div class="stat"><div class="k">Pagados aparte</div><div class="v">${money(total - fromCash)}</div></div>`;
+  $('#expList').innerHTML = list.length ? list.map(e =>
+    `<li><div class="item-main"><strong>${esc(e.concept)}</strong> — <span class="price-txt">${money(e.amount)}</span>
+       <div class="meta">${e.category ? esc(e.category) + ' · ' : ''}${e.paidFrom === 'caja' ? 'Efectivo de la caja' : 'Pagado aparte'}</div></div>
+     <button class="danger" data-edel="${e.id}">Eliminar</button></li>`
+  ).join('') : '<li class="empty">No hay gastos este día.</li>';
+}
+$('#expDate').addEventListener('change', renderExpenses);
+$('#expForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const concept = $('#expConcept').value.trim(), amount = parseMoney($('#expAmount').value);
+  if (!concept) return toast('Escribe el concepto.');
+  if (isNaN(amount) || amount <= 0) return toast('Escribe un monto válido, ej. 250');
+  await put('expenses', {
+    id: uid(), day: $('#expDate').value || localDay(), createdAt: new Date().toISOString(),
+    concept, category: $('#expCategory').value.trim(), amount, paidFrom: $('#expPaidFrom').value
+  });
+  const keepPaid = $('#expPaidFrom').value;
+  $('#expForm').reset(); $('#expPaidFrom').value = keepPaid;
+  renderExpenses();
+  toast('Gasto guardado.');
+});
+$('#expList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-edel]');
+  if (!b) return;
+  if (!(await ask({ title: '¿Eliminar este gasto?', ok: 'Eliminar' }))) return;
+  await req(store('expenses', 'readwrite').delete(b.dataset.edel));
+  renderExpenses();
+});
+
+/* ================= cierre de caja ================= */
+let closeCtx = null;
+function previousClosure(day) {
+  return new Promise((res, rej) => {
+    const r = store('closures').openCursor(IDBKeyRange.upperBound(day, true), 'prev');
+    r.onsuccess = () => res(r.result ? r.result.value : null);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function dayCash(day) {
+  const [sales, exps] = await Promise.all([rangeReq('sales', day, day), rangeReq('expenses', day, day)]);
+  const active = sales.filter(s => !s.voided);
+  const cashSales = active.filter(s => isCash(s.paymentMethod)).reduce((t, s) => t + s.total, 0);
+  const other = {};
+  active.filter(s => !isCash(s.paymentMethod)).forEach(s => { other[s.paymentMethod] = (other[s.paymentMethod] || 0) + s.total; });
+  const cashExpenses = exps.filter(e => e.paidFrom === 'caja').reduce((t, e) => t + e.amount, 0);
+  return { cashSales, cashExpenses, other };
+}
+const toInput = c => (c == null ? '' : (c / 100).toFixed(2));
+async function renderClose() {
+  const day = $('#closeDate').value || localDay();
+  const [cash, closure, prev] = await Promise.all([dayCash(day), req(store('closures').get(day)), previousClosure(day)]);
+  closeCtx = { day, ...cash, closure };
+  $('#closeOpening').value = toInput(closure ? closure.openingCash : prev ? prev.leftInRegister : 0);
+  $('#closeCounted').value = toInput(closure?.counted);
+  $('#closeWithdrawn').value = closure ? toInput(closure.withdrawn) : '';
+  $('#closeNotes').value = closure?.notes || '';
+  $('#closeSave').textContent = closure ? 'Actualizar cierre' : 'Cerrar día';
+  const otherTxt = Object.entries(cash.other).map(([m, v]) => `${m} ${money(v)}`).join(' · ');
+  $('#closeOther').textContent = otherTxt ? `Cobros que no entran a la caja: ${otherTxt}.` : '';
+  updateCloseCalc();
+}
+function updateCloseCalc() {
+  if (!closeCtx) return;
+  const opening = parseMoney($('#closeOpening').value || '0');
+  const o = isNaN(opening) ? 0 : opening;
+  const expected = o + closeCtx.cashSales - closeCtx.cashExpenses;
+  $('#cOpening').textContent = money(o);
+  $('#cCashSales').textContent = money(closeCtx.cashSales);
+  $('#cCashExp').textContent = money(closeCtx.cashExpenses);
+  $('#cExpected').textContent = money(expected);
+  const counted = parseMoney($('#closeCounted').value);
+  const withdrawn = parseMoney($('#closeWithdrawn').value || '0');
+  if (isNaN(counted)) {
+    $('#closeDiff').innerHTML = '<span class="hint">Escribe el efectivo contado para ver si cuadra.</span>';
+    $('#closeLeft').textContent = '—';
+  } else {
+    const diff = counted - expected;
+    $('#closeDiff').innerHTML = diff === 0 ? '<span class="pill ok">Cuadra</span>'
+      : diff > 0 ? `<span class="pill bajo">Sobrante</span> ${money(diff)}` : `<span class="pill agotado">Faltante</span> ${money(-diff)}`;
+    $('#closeLeft').textContent = isNaN(withdrawn) ? '—' : money(counted - withdrawn);
+  }
+  const c = closeCtx.closure;
+  let status = '';
+  if (c) {
+    status = `<p><span class="pill ok">Cerrado</span> <span class="meta">${fmtDateTime(c.closedAt)}</span></p>`;
+    if (c.cashSales !== closeCtx.cashSales || c.cashExpenses !== closeCtx.cashExpenses)
+      status += '<div class="warn-box">Hubo ventas, anulaciones o gastos después del cierre. Revisa el conteo y toca "Actualizar cierre".</div>';
+  } else if (closeCtx.day < localDay()) {
+    status = '<div class="warn-box">Este día no se cerró.</div>';
+  }
+  $('#closeStatus').innerHTML = status;
+}
+['#closeOpening', '#closeCounted', '#closeWithdrawn'].forEach(s => $(s).addEventListener('input', updateCloseCalc));
+$('#closeDate').addEventListener('change', renderClose);
+$('#closeSave').addEventListener('click', async () => {
+  const opening = parseMoney($('#closeOpening').value || '0');
+  const counted = parseMoney($('#closeCounted').value);
+  const withdrawn = parseMoney($('#closeWithdrawn').value || '0');
+  if (isNaN(opening) || opening < 0) return toast('El fondo inicial no es válido.');
+  if (isNaN(counted) || counted < 0) return toast('Escribe cuánto efectivo contaste.');
+  if (isNaN(withdrawn) || withdrawn < 0) return toast('El retiro no es válido.');
+  if (withdrawn > counted) return toast('No puedes retirar más de lo que hay en caja.');
+  const expected = opening + closeCtx.cashSales - closeCtx.cashExpenses;
+  const difference = counted - expected;
+  if (difference !== 0) {
+    const txt = difference > 0 ? `Hay ${money(difference)} de más.` : `Faltan ${money(-difference)}.`;
+    if (!(await ask({ title: 'La caja no cuadra', text: `${txt} ¿Guardar el cierre así?`, ok: 'Guardar' }))) return;
+  }
+  await put('closures', {
+    day: closeCtx.day, closedAt: new Date().toISOString(), openingCash: opening,
+    cashSales: closeCtx.cashSales, cashExpenses: closeCtx.cashExpenses, expected, counted, difference,
+    withdrawn, leftInRegister: counted - withdrawn, notes: $('#closeNotes').value.trim()
+  });
+  await renderClose(); renderSummary();
+  toast(`Día cerrado. Quedan ${money(counted - withdrawn)} en caja.`);
+});
+
+/* ================= resumen día / semana / mes ================= */
+const period = { kind: 'day', anchor: localDay() };
+function periodRange() {
+  const a = period.anchor;
+  if (period.kind === 'day') return [a, a];
+  if (period.kind === 'week') { const start = addDays(a, -((parseDay(a).getDay() + 6) % 7)); return [start, addDays(start, 6)]; } // lunes a domingo
+  const d = parseDay(a);
+  return [localDay(new Date(d.getFullYear(), d.getMonth(), 1)), localDay(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+}
+function periodLabel(from, to) {
+  if (period.kind === 'day') return longDay(from);
+  if (period.kind === 'week') return `${shortDay(from)} – ${shortDay(to)}`;
+  return parseDay(from).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+}
+function shiftPeriod(dir) {
+  if (period.kind === 'day') period.anchor = addDays(period.anchor, dir);
+  else if (period.kind === 'week') period.anchor = addDays(period.anchor, 7 * dir);
+  else { const d = parseDay(period.anchor); period.anchor = localDay(new Date(d.getFullYear(), d.getMonth() + dir, 1)); }
+  renderSummary();
+}
+$('#periodPrev').addEventListener('click', () => shiftPeriod(-1));
+$('#periodNext').addEventListener('click', () => shiftPeriod(1));
+$('#periodKind').addEventListener('click', e => {
+  const b = e.target.closest('[data-kind]');
+  if (!b) return;
+  period.kind = b.dataset.kind;
+  document.querySelectorAll('#periodKind button').forEach(x => x.classList.toggle('on', x === b));
+  renderSummary();
+});
+function breakdownTable(title, rows, cols) {
+  if (!rows.length) return '';
+  return `<h3 class="cat-title" style="font-size:17px"><span>✱</span>${title}</h3><div class="table-wrap"><table>
+    <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`;
+}
+async function renderSummary() {
+  const [from, to] = periodRange();
+  $('#periodLabel').textContent = periodLabel(from, to);
+  const [sales, exps, clos] = await Promise.all([rangeReq('sales', from, to), rangeReq('expenses', from, to), req(store('closures').getAll(IDBKeyRange.bound(from, to)))]);
+  const active = sales.filter(s => !s.voided);
+  const total = active.reduce((t, s) => t + s.total, 0), spent = exps.reduce((t, e) => t + e.amount, 0);
+  const byMethod = {}, byChannel = { tienda: 0, delivery: 0 }, byProduct = new Map(), byCat = {};
+  active.forEach(s => {
+    byMethod[s.paymentMethod] = (byMethod[s.paymentMethod] || 0) + s.total;
+    s.items.forEach(i => {
+      byChannel[i.channel || 'tienda'] += i.unitPrice * i.qty;
+      const k = i.name + (i.variant ? ` (${i.variant})` : '');
+      const cur = byProduct.get(k) || { qty: 0, amount: 0 };
+      cur.qty += i.qty; cur.amount += i.unitPrice * i.qty; byProduct.set(k, cur);
+    });
+  });
+  exps.forEach(e => { const c = e.category || 'Sin categoría'; byCat[c] = (byCat[c] || 0) + e.amount; });
+  const diffTotal = clos.reduce((t, c) => t + c.difference, 0);
+  let html = `<div class="summary">
+    <div class="stat"><div class="k">Ventas</div><div class="v">${money(total)}</div></div>
+    <div class="stat"><div class="k">Gastos</div><div class="v">${money(spent)}</div></div>
+    <div class="stat"><div class="k">Ventas − gastos</div><div class="v">${money(total - spent)}</div></div>
+    <div class="stat"><div class="k">Tickets</div><div class="v">${active.length}</div></div>
+    <div class="stat"><div class="k">Ticket promedio</div><div class="v">${money(active.length ? Math.round(total / active.length) : 0)}</div></div>
+    <div class="stat"><div class="k">Diferencias de caja</div><div class="v">${clos.length ? (diffTotal > 0 ? '+' : '') + money(diffTotal) : '—'}</div></div>
+  </div>`;
+  if (period.kind !== 'day') {
+    const closMap = Object.fromEntries(clos.map(c => [c.day, c]));
+    const rows = daysBetween(from, to).filter(d => d <= localDay()).map(d => {
+      const sv = active.filter(s => s.day === d).reduce((t, s) => t + s.total, 0);
+      const ex = exps.filter(e => e.day === d).reduce((t, e) => t + e.amount, 0);
+      const c = closMap[d];
+      const cierre = c ? (c.difference === 0 ? 'Cuadra' : (c.difference > 0 ? '+' : '−') + money(Math.abs(c.difference))) : (sv ? 'Sin cerrar' : '—');
+      return [esc(shortDay(d)), money(sv), money(ex), money(sv - ex), cierre];
+    });
+    html += breakdownTable('Por día', rows, ['Día', 'Ventas', 'Gastos', 'Neto', 'Caja']);
+  }
+  html += breakdownTable('Formas de pago', Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([m, v]) => [esc(m), money(v)]), ['Forma', 'Total']);
+  html += breakdownTable('Canal', [['En tienda', money(byChannel.tienda)], ['Delivery', money(byChannel.delivery)]], ['Canal', 'Total']);
+  html += breakdownTable('Más vendidos', [...byProduct].sort((a, b) => b[1].qty - a[1].qty || b[1].amount - a[1].amount).slice(0, 10)
+    .map(([n, v]) => [esc(n), v.qty, money(v.amount)]), ['Producto', 'Cant.', 'Total']);
+  html += breakdownTable('Gastos por categoría', Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => [esc(c), money(v)]), ['Categoría', 'Total']);
+  if (!active.length && !exps.length) html += '<p class="empty">No hay ventas ni gastos en este periodo.</p>';
+  $('#summaryBody').innerHTML = html;
+}
+
+/* ================= ajustes ================= */
+function renderSettings() {
+  $('#shopName').textContent = settings.shopName;
+  document.title = `${settings.shopName} · Punto de venta`;
+  $('#setShopName').value = settings.shopName;
+  $('#setCurrency').value = settings.currency;
+  $('#setMethods').value = settings.paymentMethods.join(', ');
+  $('#setReminder').value = settings.reminderDays;
+}
+$('#settingsForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const methods = $('#setMethods').value.split(',').map(s => s.trim()).filter(Boolean);
+  settings = {
+    shopName: $('#setShopName').value.trim() || DEFAULT_SETTINGS.shopName,
+    currency: $('#setCurrency').value,
+    paymentMethods: methods.length ? methods : DEFAULT_SETTINGS.paymentMethods,
+    reminderDays: Math.max(1, parseInt($('#setReminder').value, 10) || DEFAULT_SETTINGS.reminderDays)
+  };
+  await setMeta('settings', settings);
+  if (payment && !settings.paymentMethods.includes(payment)) payment = null;
+  renderAll();
+  toast('Ajustes guardados.');
+});
+async function ensurePersistentStorage() {
+  if (!navigator.storage || !navigator.storage.persist) {
+    $('#storageText').textContent = 'Este navegador no puede proteger los datos. Envía respaldos seguido.';
+    return;
+  }
+  let ok = await navigator.storage.persisted();
+  if (!ok) ok = await navigator.storage.persist();
+  $('#storageText').textContent = ok
+    ? 'Datos protegidos: el navegador no los borrará por su cuenta.'
+    : 'Datos aún no protegidos. Instalar la app en la pantalla de inicio suele resolverlo. Sigue enviando respaldos.';
+}
+
+/* ================= arranque ================= */
+function renderAll() {
+  renderSettings(); renderProductGrid(); renderCart(); renderProductList(); renderSales(); renderInventory(); renderBackupInfo(); checkBackupReminder();
+}
+async function loadState() {
+  settings = { ...DEFAULT_SETTINGS, ...((await getMeta('settings')) || {}) };
+  [products, inventory] = await Promise.all([getAll('products'), getAll('inventory')]);
+  cart.clear(); payment = null;
+  renderAll();
+}
+(async function init() {
+  try {
+    db = await openDB();
+  } catch (err) {
+    document.querySelector('main').innerHTML = '<p class="empty">Este navegador no puede guardar datos. Abre la app en Chrome.</p>';
+    return;
+  }
+  if (!(await getMeta('firstUse'))) {
+    await setMeta('firstUse', new Date().toISOString());
+    if (!(await getAll('products')).length) {
+      await runTx(['products'], t => SEED_PRODUCTS.forEach(([name, price, category]) =>
+        t.objectStore('products').put({ id: uid(), name, price: price * 100, deliveryPrice: null, category, recipe: [] })));
+    }
+  }
+  $('#salesDate').value = localDay(); $('#expDate').value = localDay(); $('#closeDate').value = localDay();
+  await loadState();
+  ensurePersistentStorage();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+})();
+</script>
+</body>
+</html>
