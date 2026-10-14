@@ -17,7 +17,7 @@ sales keep working without signal and upload when it returns. Several phones can
 5. Upload `index.html`, `sw.js`, `manifest.webmanifest`, `logo.png`, `icon-192.png`, `icon-512.png` to the GitHub repo.
 6. Open the app, sign in as super user, then: Más → Respaldo y ajustes → **Usuarios** → create the other accounts.
    Create users from the app, not from the console (the app also saves their role).
-7. Products: either "Cargar el menú de Abastos Brew", or on the phone that used the old version:
+7. Products: Productos → "Cargar menú" (the printed menu, 29 items), or on the phone that used the old version:
    sign in as admin → Más → Respaldo y ajustes → **Subir a la nube** (one time only).
 
 ## Roles
@@ -43,7 +43,7 @@ Deactivating a user (Usuarios → Desactivar) locks them out at once; their past
 
 ## Publishing an update
 1. Upload the changed files to the repo (GitHub Pages redeploys in about a minute).
-2. Bump `CACHE = 'abastos-pos-v9'` in `sw.js` to the next number.
+2. Bump `CACHE = 'abastos-pos-v10'` in `sw.js` to the next number.
 3. Phones pick up the new version the next times they open the app with internet.
 
 ## Backups

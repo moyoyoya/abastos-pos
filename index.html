@@ -306,10 +306,10 @@ body:not(.can-super) .need-super{display:none!important}
 
   <!-- PRODUCTOS -->
   <section id="tab-products" class="tab hidden">
-    <div id="seedBox" class="card need-admin hidden">
-      <h2>Menú vacío</h2>
-      <p class="hint">Todavía no hay productos en la nube. Puedes cargar el menú de Abastos Brew (16 bebidas) y editarlo después, o subir los datos que ya tienes en un teléfono desde Más → Respaldo y ajustes.</p>
-      <button type="button" class="primary" id="seedBtn">Cargar el menú de Abastos Brew</button>
+    <div id="seedBox" class="card need-admin">
+      <h2>Menú de Abastos Brew</h2>
+      <p class="hint" id="seedText"></p>
+      <button type="button" class="primary" id="seedBtn">Cargar menú</button>
     </div>
     <p class="hint" id="productsReadOnly">Solo un administrador puede crear o editar productos.</p>
     <form id="productForm" class="card need-admin">
@@ -536,14 +536,27 @@ const FB_URL = 'https://www.gstatic.com/firebasejs/12.19.0/';
 const DEFAULT_SETTINGS = { shopName: 'Abastos Brew', currency: '$', paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'App delivery'] };
 const CHANNEL_LABEL = { tienda: 'En tienda', delivery: 'Delivery' };
 const ROLE_LABEL = { super: 'Super usuario', admin: 'Administrador', regular: 'Cajero' };
-const SEED_PRODUCTS = [
-  ['Espresso', 35, 'Clásicos'], ['Americano', 40, 'Clásicos'], ['Latte', 55, 'Clásicos'], ['Capuccino', 55, 'Clásicos'],
-  ['Dark Abastos Latte (moka)', 65, 'Especialidad'], ['Sweet Street Latte (vainilla)', 65, 'Especialidad'],
-  ['Caramel Flow Latte (caramelo)', 65, 'Especialidad'], ['Avellana Latte', 65, 'Especialidad'],
-  ['Cold Brew Rocas', 50, 'Fríos'], ['Cold Brew + Agua', 50, 'Fríos'], ['Cold Brew + Leche', 60, 'Fríos'],
+// Menu as printed (Oct 2026). "Cargar menú" creates what's missing and updates prices of what exists, matched by name.
+// Format: [name, price, category, variants?]. Variants: [name, extra price].
+const GUISOS = [['Pierna adobada', 0], ['Chicharrón en salsa verde', 0], ['Machaca con papas a la mexicana', 0]];
+const MENU = [
+  ['Café del día', 20, 'Clásicos'], ['Espresso', 35, 'Clásicos'], ['Americano', 40, 'Clásicos'],
+  ['Latte', 55, 'Clásicos'], ['Cappuccino', 55, 'Clásicos'],
+  ['Dark Abastos Latte (Moka)', 65, 'Especialidad', [['Caliente', 0], ['Frío', 0]]],
+  ['Sweet Street Latte (Vainilla)', 65, 'Especialidad', [['Caliente', 0], ['Frío', 0]]],
+  ['Caramel Flow Latte (Caramelo)', 65, 'Especialidad', [['Caliente', 0], ['Frío', 0]]],
+  ['Avellana Latte', 65, 'Especialidad', [['Caliente', 0], ['Frío', 0]]],
+  ['Cold Brew Rocas', 50, 'Fríos'], ['Cold Brew + Agua (Americano)', 50, 'Fríos'], ['Cold Brew + Leche', 60, 'Fríos'],
   ['Cold Brew Tonic', 70, 'Fríos'], ['Cold Brew + Tonicol', 75, 'Fríos'],
-  ['Matcha Latte', 70, 'Otros'], ['Chai Latte', 70, 'Otros'], ['Dirty Chai', 80, 'Otros']
+  ['Matcha Latte', 70, 'Otras bebidas'], ['Chai Latte', 70, 'Otras bebidas'], ['Dirty Chai', 80, 'Otras bebidas'],
+  ['Galleta', 20, 'Postres'], ['Rebanada de pastel', 60, 'Postres'], ['Muffin', 40, 'Postres'],
+  ['Chilaquiles con frijoles', 90, 'Chilaquiles', [['Rojos', 0], ['Verdes', 0]]],
+  ['Extra: Huevo', 20, 'Chilaquiles'], ['Extra: Guisado', 30, 'Chilaquiles', GUISOS],
+  ['Lonche de chilaquiles', 50, 'Lonches'], ['Lonche de guisado', 65, 'Lonches', GUISOS], ['Lonche de pierna', 60, 'Lonches'],
+  ['Wrap', 50, 'Otros alimentos'], ['Burrito', 25, 'Otros alimentos'], ['Molletes de frijoles con queso', 40, 'Otros alimentos']
 ];
+// Names used by earlier versions of the app, so they get updated instead of duplicated.
+const MENU_ALIASES = { 'capuccino': 'cappuccino', 'cold brew + agua': 'cold brew + agua (americano)', 'chilaquiles': 'chilaquiles con frijoles' };
 const $ = s => document.querySelector(s);
 
 let products = [], inventory = [], settings = { ...DEFAULT_SETTINGS }, payment = null;
@@ -587,7 +600,14 @@ function toast(msg, ms = 3200) {
   toastTimer = setTimeout(() => t.classList.add('hidden'), ms);
 }
 const byName = (a, b) => a.name.localeCompare(b.name, 'es');
-const sortedProducts = () => [...products].sort((a, b) => (a.category || '').localeCompare(b.category || '', 'es') || byName(a, b));
+// Same order as the printed menu; anything added later goes after, alphabetically.
+const menuRank = (list, key) => { const i = list.indexOf(key); return i < 0 ? 1e6 : i; };
+const MENU_CATS = () => [...new Set(MENU.map(m => m[2]))];
+const MENU_NAMES = () => MENU.map(m => m[0].toLowerCase());
+const sortedProducts = () => { const cats = MENU_CATS(), names = MENU_NAMES();
+  return [...products].sort((a, b) => menuRank(cats, a.category) - menuRank(cats, b.category)
+    || (a.category || '').localeCompare(b.category || '', 'es')
+    || menuRank(names, a.name.toLowerCase()) - menuRank(names, b.name.toLowerCase()) || byName(a, b)); };
 const sortedInv = () => [...inventory].sort(byName);
 const invById = id => inventory.find(i => i.id === id);
 const usesItem = (p, itemId) => [...(p.recipe || []), ...(p.variants || []).flatMap(v => v.recipe || [])].some(r => r.itemId === itemId);
@@ -1377,7 +1397,11 @@ function readVariants() {
   return { variants: out };
 }
 function renderProductList() {
-  $('#seedBox').classList.toggle('hidden', !(products.length === 0 && productsFromServer));
+  const plan = menuPlan();
+  $('#seedText').textContent = `El menú impreso tiene ${MENU.length} productos en 9 categorías. ` + (plan.create.length || plan.update.length
+    ? `Faltan ${plan.create.length} y ${plan.update.length} tienen otro precio o categoría. Cargar menú los crea o actualiza sin duplicar ni borrar nada.`
+    : 'Todo está al día.');
+  $('#seedBtn').disabled = !(plan.create.length || plan.update.length);
   $('#categoryList').innerHTML = [...new Set(products.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('');
   $('#productList').innerHTML = products.length ? sortedProducts().map(p =>
     `<li><div class="item-main"><strong>${esc(p.name)}</strong> — <span class="price-txt">Tienda ${money(p.price)}${hasDelivery(p) ? ` · Delivery ${money(p.deliveryPrice)}` : ''}</span>
@@ -1459,15 +1483,35 @@ $('#productList').addEventListener('click', async e => {
     [...cart.keys()].filter(k => k.startsWith(p.id + '|')).forEach(k => cart.delete(k));
   }
 });
-$('#seedBtn').addEventListener('click', () => {
-  if (!requireAdmin() || products.length) return;
+const normName = s => { const n = String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); return MENU_ALIASES[n] || n; };
+function menuPlan() {
+  const byName = new Map(products.map(p => [normName(p.name), p]));
+  const create = [], update = [];
+  MENU.forEach(([name, price, category, variants]) => {
+    const cur = byName.get(normName(name));
+    if (!cur) return create.push({ name, price, category, variants });
+    const needsVariants = variants && !variantsOf(cur).length;
+    if (cur.price !== price * 100 || cur.category !== category || cur.name !== name || needsVariants) update.push({ cur, name, price, category, variants: needsVariants ? variants : null });
+  });
+  return { create, update };
+}
+const mkVariants = list => (list || []).map(([name, extra]) => ({ id: uid(), name, extra: extra * 100, recipe: [] }));
+$('#seedBtn').addEventListener('click', async () => {
+  if (!requireAdmin()) return;
+  const { create, update } = menuPlan();
+  if (!create.length && !update.length) return toast('El menú ya está al día.');
+  const lines = [create.length ? `Nuevos: ${create.map(x => x.name).join(', ')}.` : '', update.length ? `Se actualizan: ${update.map(x => x.name).join(', ')}.` : ''].filter(Boolean).join(' ');
+  if (!(await ask({ title: 'Cargar menú', text: `${lines} Recetas de inventario, precios de delivery y productos que no están en el menú no se tocan.`, ok: 'Cargar' }))) return;
   const b = ff.writeBatch(fs);
-  SEED_PRODUCTS.forEach(([name, price, category]) => {
+  create.forEach(({ name, price, category, variants }) => {
     const id = uid();
-    b.set(dref('products', id), { id, name, price: price * 100, deliveryPrice: null, category, recipe: [], variants: [] });
+    b.set(dref('products', id), { id, name, price: price * 100, deliveryPrice: null, category, recipe: [], variants: mkVariants(variants) });
+  });
+  update.forEach(({ cur, name, price, category, variants }) => {
+    b.update(dref('products', cur.id), clean({ name, price: price * 100, category, ...(variants ? { variants: mkVariants(variants) } : {}) }));
   });
   commit(b, 'cargar el menú');
-  toast('Menú cargado.');
+  toast(`Menú cargado: ${create.length} nuevos, ${update.length} actualizados.`, 5000);
 });
 
 /* ================= inventario ================= */
