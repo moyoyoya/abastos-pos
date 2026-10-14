@@ -1,43 +1,54 @@
 # Abastos Brew · Punto de venta
 
-Offline web app for an Android tablet. No server: the code is hosted as a static site, and all data lives in the tablet's browser (IndexedDB).
+Web app hosted on GitHub Pages. Data lives in Firebase (Firestore) and every phone keeps an offline copy:
+sales keep working without signal and upload when it returns. Several phones can sell at the same time.
 
 ## Files
-- `index.html` – the whole app (UI + logic)
-- `sw.js` – service worker: caches the app so it opens with no internet
-- `manifest.webmanifest`, `icon-*.png`, `logo.png` – installable app, Abastos Brew branding
+- `index.html` – the whole app (UI + logic). Firebase config and `SUPER_UID` are at the top of the script.
+- `firestore.rules` – security rules. Paste into Firebase Console → Firestore Database → Rules → Publish.
+- `sw.js` – caches the app, fonts and the Firebase SDK so the app opens without internet.
+- `manifest.webmanifest`, `icon-*.png`, `logo.png` – installable app, Abastos Brew branding.
 
-## How it runs (important)
-The zip is only for you to upload. Your brother never opens it.
-He opens a URL once in Chrome, installs it to the home screen, and from then on it works offline.
+## One-time setup
+1. Firebase Console → Authentication → Users → **Add user** (your email + password). Copy its **User UID**.
+2. (Done) Super user UID `pNHsoXTZelQyNl785pceyifj30b2` is set in both `index.html` and `firestore.rules`.
+3. Publish `firestore.rules` in the console (Firestore Database → Rules → paste → Publish).
+4. Authentication → Settings → Authorized domains → add `moyoyoya.github.io`.
+5. Upload `index.html`, `sw.js`, `manifest.webmanifest`, `logo.png`, `icon-192.png`, `icon-512.png` to the GitHub repo.
+6. Open the app, sign in as super user, then: Más → Respaldo y ajustes → **Usuarios** → create the other accounts.
+   Create users from the app, not from the console (the app also saves their role).
+7. Products: either "Cargar el menú de Abastos Brew", or on the phone that used the old version:
+   sign in as admin → Más → Respaldo y ajustes → **Subir a la nube** (one time only).
 
-## Hosting (you, once)
-1. Create a public GitHub repo, e.g. `abastos-pos`, and upload these files to the root.
-2. Settings → Pages → Deploy from branch → `main` / root.
-3. The app is at `https://<your-user>.github.io/abastos-pos/`.
+## Roles
+| | Super | Admin | Cajero |
+|---|---|---|---|
+| Sell, inventory deliveries, expenses, close the day, see everything | ✓ | ✓ | ✓ |
+| Void sales, delete expenses, physical counts | ✓ | ✓ | — |
+| Edit products/prices, create supplies, settings | ✓ | ✓ | — |
+| Create users and assign roles, restore backups | ✓ | — | — |
 
-## Where the data lives, and why updates are safe
-- The database lives in Chrome on the tablet, tied to the site address (the "origin": `https://<your-user>.github.io`).
-- An update only replaces the code files. Same address → same database → nothing is lost.
-- **Never change the address** (repo name, GitHub user, or moving to another domain). A new address = an empty database. If you ever must move, use Respaldo → Enviar respaldo on the old one and Restaurar on the new one.
-- Changing the data structure: bump `DB_VERSION` in `index.html` and add an `if (old < N)` step in `openDB()`. Existing data is upgraded in place.
+Enforced twice: the app hides what a role can't do, and `firestore.rules` rejects it on the server.
+Deactivating a user (Usuarios → Desactivar) locks them out at once; their past sales stay.
+
+## Data model (Firestore)
+`products`, `inventory` (stock changed only by increments, so concurrent sales add up), `movements`,
+`sales` (each with `createdBy`), `dailyStats/{day}` (running totals for fast summaries), `expenses`,
+`closures/{day}`, `settings/main`, `users/{uid}`.
+
+## Offline behaviour
+- First sign-in on each phone needs internet. After that the app opens and sells offline.
+- The header shows "Sincronizado", "Subiendo…" or "Sin internet · cambios guardados aquí".
+- Close the register only after every phone has synced, or their sales won't count yet.
 
 ## Publishing an update
 1. Upload the changed files to the repo (GitHub Pages redeploys in about a minute).
-2. Change `CACHE = 'abastos-pos-v7'` in `sw.js` to the next number. This tells the tablet there's a new version.
-3. The next time the tablet opens the app with internet, it downloads the new code in the background; the version after that runs it. No action needed from your brother.
+2. Bump `CACHE = 'abastos-pos-v9'` in `sw.js` to the next number.
+3. Phones pick up the new version the next times they open the app with internet.
 
-## Instrucciones para instalar (para tu hermano)
-1. Con internet, abre el enlace en **Chrome**.
-2. Menú (⋮) → **Instalar app** o **Agregar a pantalla de inicio**.
-3. Desde ahora ábrela con el ícono de Abastos Brew. Funciona sin internet.
-4. Cada 2 semanas: pestaña **Respaldo** → **Enviar respaldo** → elige Gmail → envíatelo a ti mismo.
+## Backups
+"Enviar respaldo" exports the cloud data (all phones) as a full backup `.txt` plus CSVs for sales,
+inventory, movements, expenses and closures. The super user can re-upload a backup file with "Restaurar".
 
-## Tabs
-Vender · Ventas · Productos · Inventario · Gastos · Cierre (cash-up + day/week/month summary) · Respaldo
-
-## Primer uso
-- The menu (16 drinks, 4 categories) is preloaded. Edit prices, add sizes (e.g. "Latte grande").
-- Inventario: create items (Vaso 12 oz, Vaso 16 oz, Tapa…) with current stock and an alert level.
-- Productos → Editar: add the items each product consumes (e.g. Latte grande → 1 Vaso 16 oz, 1 Tapa).
-- Stock drops with each sale, comes back if a sale is voided. "+ Entrada" for deliveries, "Conteo" to correct after a physical count. Every change is logged in Movimientos.
+## PIN lock (optional, per phone)
+Respaldo y ajustes → Seguridad. A quick lock on top of the login for a phone left on the counter.

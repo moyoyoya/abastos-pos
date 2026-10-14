@@ -171,14 +171,83 @@ th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spa
   .toast{bottom:calc(136px + env(safe-area-inset-bottom,0px))}
 }
 @media (max-width:700px) and (prefers-reduced-motion:reduce){.cart{transition:none}.cart-bar.bump{animation:none}}
+.brand{flex:1;min-width:0}
+.lock-btn{background:transparent;border:1px solid var(--rule);color:var(--ink);min-height:40px;padding:6px 12px;font-size:13px}
+.lock-screen{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow:auto}
+.lock-screen.hidden{display:none!important}
+.lock-box{width:100%;max-width:340px;text-align:center}
+.lock-logo{height:110px;width:auto;margin-bottom:6px}
+.lock-box h2::before{content:none}
+.lock-box h2{font-size:22px}
+.pin-dots{display:flex;justify-content:center;gap:14px;margin:18px 0 22px;min-height:18px}
+.pin-dots span{width:16px;height:16px;border-radius:50%;border:2px solid var(--ink)}
+.pin-dots span.on{background:var(--ink)}
+.pin-dots.shake{animation:shake .35s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.keypad button{min-height:64px;font-size:26px;background:var(--paper);border:1px solid var(--line);color:var(--ink)}
+.keypad button:active{background:var(--accent-soft)}
+.keypad button.ok{background:var(--ink);color:var(--paper);font-size:18px}
+.keypad button:disabled{opacity:.4}
+.lock-links{display:flex;justify-content:center;gap:16px;margin-top:16px}
+.link-btn{background:transparent;color:var(--accent);text-decoration:underline;text-transform:none;letter-spacing:0;font-family:var(--body);min-height:44px}
+.recovery-code{font-family:var(--display);font-size:26px;letter-spacing:.1em;text-align:center;padding:12px;margin:10px 0;border:2px dashed var(--ink);border-radius:8px;user-select:all}
+@media (prefers-reduced-motion:reduce){.pin-dots.shake{animation:none}}
+.auth-screen{z-index:110}
+.auth-form{text-align:left;margin-top:14px;display:grid;gap:4px}
+.auth-form .primary{margin-top:8px}
+.who{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--muted)}
+.who .pill{font-size:11px;padding:2px 8px}
+body:not(.can-admin) .need-admin{display:none!important}
+body:not(.can-super) .need-super{display:none!important}
+.user-row select{width:auto;min-height:40px;padding:6px 8px}
+.sub-h{font-family:var(--display);text-transform:uppercase;letter-spacing:.04em;font-size:16px;margin:16px 0 4px}
+.progress{font-family:var(--display);margin:8px 0}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;max-width:90vw;z-index:10}
 </style>
 </head>
 <body>
 <header class="top">
   <img src="logo.png" alt="">
-  <div><h1 id="shopName">Abastos Brew</h1><div class="sub">Punto de venta</div></div>
+  <div class="brand"><h1 id="shopName">Abastos Brew</h1><div class="sub">Punto de venta</div>
+    <div class="who"><span id="whoami"></span><span id="syncBadge" class="pill"></span></div></div>
+  <button type="button" id="lockNow" class="lock-btn hidden" aria-label="Bloquear">Bloquear</button>
 </header>
+<div id="authScreen" class="lock-screen auth-screen" aria-live="polite">
+  <div class="lock-box">
+    <img src="logo.png" alt="" class="lock-logo">
+    <h2>Abastos Brew</h2>
+    <p id="authMsg" class="hint">Cargando…</p>
+    <form id="loginForm" class="auth-form hidden">
+      <label>Correo<input id="loginEmail" type="email" autocomplete="username" required></label>
+      <label>Contraseña<input id="loginPass" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit" id="loginBtn">Entrar</button>
+      <button type="button" class="link-btn" id="forgotPass">¿Olvidaste tu contraseña?</button>
+    </form>
+    <div id="authActions" class="lock-links hidden">
+      <button type="button" class="secondary" id="authRetry">Reintentar</button>
+      <button type="button" class="secondary" id="authSignOut">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+<div id="lockScreen" class="lock-screen hidden" aria-live="polite">
+  <div class="lock-box">
+    <img src="logo.png" alt="" class="lock-logo">
+    <h2 id="lockTitle">Abastos Brew</h2>
+    <p id="lockMsg" class="hint"></p>
+    <div id="pinDots" class="pin-dots" aria-hidden="true"></div>
+    <div class="keypad" id="keypad">
+      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+      <button type="button" data-k="del" aria-label="Borrar">⌫</button><button type="button" data-k="0">0</button><button type="button" data-k="ok" class="ok">OK</button>
+    </div>
+    <div class="lock-links">
+      <button type="button" id="lockForgot" class="link-btn">Olvidé mi PIN</button>
+      <button type="button" id="lockCancel" class="link-btn hidden">Cancelar</button>
+    </div>
+  </div>
+</div>
 <div id="backupBanner" class="banner hidden"><span id="backupBannerText"></span><button data-go="backup">Respaldar</button></div>
 <nav class="tabs">
   <button data-tab="sell" class="active">Vender</button>
@@ -237,7 +306,13 @@ th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spa
 
   <!-- PRODUCTOS -->
   <section id="tab-products" class="tab hidden">
-    <form id="productForm" class="card">
+    <div id="seedBox" class="card need-admin hidden">
+      <h2>Menú vacío</h2>
+      <p class="hint">Todavía no hay productos en la nube. Puedes cargar el menú de Abastos Brew (16 bebidas) y editarlo después, o subir los datos que ya tienes en un teléfono desde Más → Respaldo y ajustes.</p>
+      <button type="button" class="primary" id="seedBtn">Cargar el menú de Abastos Brew</button>
+    </div>
+    <p class="hint" id="productsReadOnly">Solo un administrador puede crear o editar productos.</p>
+    <form id="productForm" class="card need-admin">
       <h2 id="productFormTitle">Nuevo producto</h2>
       <input type="hidden" id="productId">
       <label>Nombre<input id="productName" required placeholder="Ej.: Latte grande"></label>
@@ -264,7 +339,7 @@ th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spa
   <section id="tab-inventory" class="tab hidden">
     <div id="invSummary" class="summary"></div>
     <ul id="itemList" class="list"></ul>
-    <form id="itemForm" class="card">
+    <form id="itemForm" class="card need-admin">
       <h2 id="itemFormTitle">Nuevo insumo</h2>
       <input type="hidden" id="itemId">
       <label>Nombre<input id="itemName" required placeholder="Ej.: Vaso 12 oz"></label>
@@ -326,6 +401,7 @@ th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spa
         <label>Notas (opcional)<input id="closeNotes"></label>
         <button type="button" class="primary" id="closeSave">Cerrar día</button>
         <p class="hint" id="closeOther"></p>
+        <p class="hint">Antes de cerrar, abre la app con internet en todos los teléfonos para que sus ventas se suban y cuenten aquí.</p>
       </div>
       <div class="card">
         <h2>Resumen</h2>
@@ -347,25 +423,69 @@ th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spa
   <!-- RESPALDO -->
   <section id="tab-backup" class="tab hidden">
     <div class="card">
-      <h2>Respaldo</h2>
-      <p id="lastBackupText"></p>
-      <p class="hint">Toca "Enviar respaldo", elige tu app de correo y envíatelo a ti mismo. Se adjuntan: el respaldo completo (para restaurar la app) y hojas de cálculo de ventas, inventario, movimientos, gastos y cierres (se abren en Excel o Google Sheets). Si no hay internet, el correo se envía solo cuando vuelva la señal.</p>
+      <h2>Mi cuenta</h2>
+      <p id="accountInfo"></p>
       <div class="row">
-        <button id="shareBackup" class="primary">Enviar respaldo</button>
-        <button id="downloadBackup" class="secondary">Guardar en la tablet</button>
+        <button type="button" class="secondary" id="myPassword">Cambiar mi contraseña</button>
+        <button type="button" class="danger" id="signOutBtn">Cerrar sesión</button>
       </div>
     </div>
+    <div id="legacyCard" class="card need-admin hidden">
+      <h2>Datos guardados en este teléfono</h2>
+      <p id="legacyText"></p>
+      <p class="hint">Súbelos una sola vez, desde el teléfono que se usaba antes. Necesita internet. No borra nada de este teléfono.</p>
+      <button type="button" class="primary" id="legacyUpload">Subir a la nube</button>
+      <div id="legacyProgress" class="progress"></div>
+    </div>
+    <div class="card need-super">
+      <h2>Usuarios</h2>
+      <ul id="userList" class="list"></ul>
+      <form id="userForm">
+        <h3 class="sub-h">Nuevo usuario</h3>
+        <label>Nombre<input id="uName" required placeholder="Ej.: María"></label>
+        <label>Correo<input id="uEmail" type="email" required autocomplete="off"></label>
+        <label>Contraseña temporal (mínimo 6 caracteres)<input id="uPass" type="text" required minlength="6" autocomplete="off"></label>
+        <label>Rol
+          <select id="uRole">
+            <option value="regular">Cajero: vende, registra entradas, gastos y cierre</option>
+            <option value="admin">Administrador: además anula ventas y edita productos e inventario</option>
+          </select>
+        </label>
+        <button class="primary" type="submit" id="uSave">Crear usuario</button>
+        <p class="hint">Necesita internet. Dale a la persona su correo y contraseña; después puede cambiarla.</p>
+      </form>
+    </div>
     <div class="card">
+      <h2>Respaldo</h2>
+      <p id="lastBackupText"></p>
+      <p class="hint">Toca "Enviar respaldo", elige tu app de correo y envíatelo a ti mismo. Se adjuntan: el respaldo completo (para restaurar la app) y hojas de cálculo de ventas, inventario, movimientos, gastos y cierres (se abren en Excel o Google Sheets). Incluye los datos de todos los teléfonos que ya se subieron a la nube.</p>
+      <div class="row">
+        <button id="shareBackup" class="primary">Enviar respaldo</button>
+        <button id="downloadBackup" class="secondary">Guardar en el teléfono</button>
+      </div>
+    </div>
+    <div class="card need-super">
       <h2>Restaurar</h2>
-      <p class="hint">Reemplaza todos los productos, inventario y ventas de esta tablet con un archivo de respaldo (el que termina en -respaldo-FECHA.txt).</p>
+      <p class="hint">Sube a la nube el contenido de un archivo de respaldo (el que termina en -respaldo-FECHA.txt). Agrega o actualiza registros; no borra los que ya existen. Necesita internet.</p>
       <input type="file" id="restoreFile" accept=".txt,.json,text/plain,application/json">
+    </div>
+    <div class="card">
+      <h2>Seguridad</h2>
+      <p id="pinStatus"></p>
+      <p class="hint">El PIN bloquea la app en este teléfono. Se pide al abrirla y después de unos minutos sin usarla.</p>
+      <label id="autoLockLabel">Bloquear después de (minutos sin uso)<input id="setAutoLock" type="number" min="1" max="120" inputmode="numeric"></label>
+      <div class="row">
+        <button type="button" id="pinEnable" class="primary">Activar PIN</button>
+        <button type="button" id="pinChange" class="secondary">Cambiar PIN</button>
+        <button type="button" id="pinDisable" class="danger">Quitar PIN</button>
+      </div>
     </div>
     <form id="settingsForm" class="card">
       <h2>Ajustes</h2>
-      <label>Nombre del negocio<input id="setShopName"></label>
-      <label>Símbolo de moneda<input id="setCurrency"></label>
-      <label>Formas de pago (separadas por coma)<input id="setMethods"></label>
-      <label>Recordar respaldo cada (días)<input id="setReminder" type="number" min="1"></label>
+      <label>Nombre del negocio<input id="setShopName" class="admin-input"></label>
+      <label>Símbolo de moneda<input id="setCurrency" class="admin-input"></label>
+      <label>Formas de pago (separadas por coma)<input id="setMethods" class="admin-input"></label>
+      <label>Recordar respaldo cada (días, en este teléfono)<input id="setReminder" type="number" min="1"></label>
       <button class="primary" type="submit">Guardar ajustes</button>
       <p class="hint" id="storageText"></p>
     </form>
@@ -400,12 +520,22 @@ th{font-family:var(--display);font-size:13px;text-transform:uppercase;letter-spa
 
 <script>
 'use strict';
+/* ================= configuración ================= */
 const APP_ID = 'simple-pos';
-const DB_NAME = 'pos-db';
-const DB_VERSION = 3;
-const DEFAULT_SETTINGS = { shopName: 'Abastos Brew', currency: '$', paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'App delivery'], reminderDays: 14 };
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyA6ATrekJLCJSKuxPuk3wXL2ZYstzx3MqY',
+  authDomain: 'abastosbrew-gdl.firebaseapp.com',
+  projectId: 'abastosbrew-gdl',
+  storageBucket: 'abastosbrew-gdl.firebasestorage.app',
+  messagingSenderId: '181841401567',
+  appId: '1:181841401567:web:9ca17462687ff582afbb6a'
+};
+// The super user is fixed by account UID, here and in firestore.rules. Everyone else gets a role in users/{uid}.
+const SUPER_UID = 'pNHsoXTZelQyNl785pceyifj30b2';
+const FB_URL = 'https://www.gstatic.com/firebasejs/12.19.0/';
+const DEFAULT_SETTINGS = { shopName: 'Abastos Brew', currency: '$', paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'App delivery'] };
 const CHANNEL_LABEL = { tienda: 'En tienda', delivery: 'Delivery' };
-// Loaded once on first launch so the menu is ready to use. Everything can be edited or deleted.
+const ROLE_LABEL = { super: 'Super usuario', admin: 'Administrador', regular: 'Cajero' };
 const SEED_PRODUCTS = [
   ['Espresso', 35, 'Clásicos'], ['Americano', 40, 'Clásicos'], ['Latte', 55, 'Clásicos'], ['Capuccino', 55, 'Clásicos'],
   ['Dark Abastos Latte (moka)', 65, 'Especialidad'], ['Sweet Street Latte (vainilla)', 65, 'Especialidad'],
@@ -416,72 +546,30 @@ const SEED_PRODUCTS = [
 ];
 const $ = s => document.querySelector(s);
 
-let db, products = [], inventory = [], settings = { ...DEFAULT_SETTINGS }, payment = null;
-const cart = new Map(); // "productId|channel" -> qty   (channel: tienda | delivery)
+let products = [], inventory = [], settings = { ...DEFAULT_SETTINGS }, payment = null;
+const cart = new Map(); // "productId|channel|variantId" -> qty
+let me = null; // { uid, email, name, role }
+const live = { users: [], sales: [], expenses: [], closures: [], stats: [], movements: [] };
+let salesFrom = '', liveFrom = '', liveDay = '', productsFromServer = false;
 
-/* ================= storage (IndexedDB) =================
-   The database lives inside the browser, tied to the site's address.
-   Schema changes go in onupgradeneeded, step by step, so existing data is kept on updates. */
-function openDB() {
-  return new Promise((res, rej) => {
-    const r = indexedDB.open(DB_NAME, DB_VERSION);
-    r.onupgradeneeded = e => {
-      const d = r.result, old = e.oldVersion;
-      if (old < 1) {
-        d.createObjectStore('products', { keyPath: 'id' });
-        d.createObjectStore('sales', { keyPath: 'id' }).createIndex('day', 'day');
-        d.createObjectStore('meta', { keyPath: 'key' });
-      }
-      if (old < 2) {
-        d.createObjectStore('inventory', { keyPath: 'id' });
-        d.createObjectStore('movements', { keyPath: 'id' }).createIndex('createdAt', 'createdAt');
-      }
-      if (old < 3) {
-        d.createObjectStore('expenses', { keyPath: 'id' }).createIndex('day', 'day');
-        d.createObjectStore('closures', { keyPath: 'day' });
-      }
-    };
-    r.onsuccess = () => res(r.result);
-    r.onerror = () => rej(r.error);
-  });
-}
-const req = r => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-const store = (name, mode = 'readonly') => db.transaction(name, mode).objectStore(name);
-const getAll = n => req(store(n).getAll());
-const put = (n, v) => req(store(n, 'readwrite').put(v));
-const getMeta = async k => { const r = await req(store('meta').get(k)); return r ? r.value : undefined; };
-const setMeta = (key, value) => put('meta', { key, value });
-function runTx(stores, fn) {
-  return new Promise((res, rej) => {
-    const t = db.transaction(stores, 'readwrite');
-    fn(t);
-    t.oncomplete = res;
-    t.onerror = () => rej(t.error);
-    t.onabort = () => rej(t.error);
-  });
-}
-// Changes stock and logs one movement per item, inside an open transaction.
-function applyStock(t, changes, type, saleId = null) {
-  const inv = t.objectStore('inventory'), mov = t.objectStore('movements');
-  const now = new Date().toISOString();
-  changes.forEach(({ itemId, delta }) => {
-    if (!delta) return;
-    const g = inv.get(itemId);
-    g.onsuccess = () => {
-      const item = g.result;
-      if (!item) return;
-      item.stock = round3(item.stock + delta);
-      inv.put(item);
-      mov.put({ id: uid(), createdAt: now, itemId, itemName: item.name, unit: item.unit, delta: round3(delta), stockAfter: item.stock, type, saleId });
-    };
-  });
-}
+/* ================= almacenamiento local (solo preferencias de este teléfono) ================= */
+const ls = {
+  get(k, d = null) { try { const v = localStorage.getItem('abastos_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('abastos_' + k, JSON.stringify(v)); } catch {} },
+  del(k) { try { localStorage.removeItem('abastos_' + k); } catch {} }
+};
+const reminderDays = () => ls.get('reminderDays', 14);
 
 /* ================= helpers ================= */
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const pad = n => String(n).padStart(2, '0');
 const round3 = x => Math.round(x * 1000) / 1000;
 const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parseDay(s); d.setDate(d.getDate() + n); return localDay(d); };
+const daysBetween = (from, to) => { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; };
+const longDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+const shortDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
 const money = c => (c < 0 ? '−' : '') + settings.currency + (Math.abs(c) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtQty = n => Number(n).toLocaleString('es-MX', { maximumFractionDigits: 3 });
 const parseNum = s => { const n = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : NaN; };
@@ -489,6 +577,7 @@ const parseMoney = s => { const n = parseNum(s); return isNaN(n) ? NaN : Math.ro
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isCash = m => /efectivo|cash|dinheiro|contado/i.test(m || '');
 const fmtDateTime = iso => new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+const clean = o => JSON.parse(JSON.stringify(o)); // Firestore rejects undefined values
 let toastTimer;
 function toast(msg, ms = 3200) {
   const t = $('#toast');
@@ -509,40 +598,492 @@ function itemStatus(i) {
 }
 const STATUS_LABEL = { ok: 'OK', bajo: 'Bajo', agotado: 'Agotado' };
 
-// In-app confirm/prompt: works on the tablet and inside preview links, where the browser's own boxes are blocked.
+/* ================= roles ================= */
+const canAdmin = () => !!me && (me.role === 'admin' || me.role === 'super');
+const isSuperUser = () => !!me && me.role === 'super';
+const byMe = () => ({ uid: me.uid, name: me.name });
+function requireAdmin() {
+  if (canAdmin()) return true;
+  toast('Solo un administrador puede hacer esto.');
+  return false;
+}
+function applyRoleUI() {
+  document.body.classList.toggle('can-admin', canAdmin());
+  document.body.classList.toggle('can-super', isSuperUser());
+  $('#productsReadOnly').classList.toggle('hidden', canAdmin());
+}
+
+// In-app confirm/prompt (the browser's own boxes are blocked in some views).
 // Resolves true/false, or the typed text / null when input: true.
-function ask({ title, text = '', input = false, value = '', ok = 'Aceptar' }) {
+function ask({ title, text = '', input = false, value = '', ok = 'Aceptar', inputMode = 'decimal', cancel = true }) {
   return new Promise(resolve => {
     const d = $('#askDialog'), inp = $('#askInput');
     $('#askTitle').textContent = title;
     $('#askText').textContent = text;
     $('#askOk').textContent = ok;
     inp.classList.toggle('hidden', !input);
+    inp.inputMode = inputMode;
+    inp.setAttribute('autocapitalize', inputMode === 'text' ? 'characters' : 'off');
+    $('#askCancel').classList.toggle('hidden', !cancel);
     inp.value = value;
     let settled = false;
     const done = v => { if (settled) return; settled = true; d.close(); resolve(v); };
     $('#askOk').onclick = () => done(input ? inp.value : true);
     $('#askCancel').onclick = () => done(input ? null : false);
-    d.onclick = e => { if (e.target === d) done(input ? null : false); };
-    d.oncancel = () => done(input ? null : false);
+    d.onclick = e => { if (cancel && e.target === d) done(input ? null : false); };
+    d.oncancel = e => { if (cancel) done(input ? null : false); else e.preventDefault(); };
     inp.onkeydown = e => { if (e.key === 'Enter') done(inp.value); };
     d.showModal();
     if (input) { inp.focus(); inp.select(); }
   });
 }
 
-/* ================= tabs ================= */
+/* ================= Firebase ================= */
+let fapp, fa, ff, fbApp, auth, fs, secAuth = null;
+async function loadFirebase() {
+  [fapp, fa, ff] = await Promise.all([
+    import(FB_URL + 'firebase-app.js'), import(FB_URL + 'firebase-auth.js'), import(FB_URL + 'firebase-firestore.js')
+  ]);
+  fbApp = fapp.initializeApp(FIREBASE_CONFIG);
+  auth = fa.getAuth(fbApp); // session is remembered on the phone, so it opens offline after the first login
+  fs = ff.initializeFirestore(fbApp, { localCache: ff.persistentLocalCache({ tabManager: ff.persistentMultipleTabManager() }) });
+}
+const col = name => ff.collection(fs, name);
+const dref = (name, id) => ff.doc(fs, name, id);
+const docsOf = snap => snap.docs.map(d => ({ ...d.data(), id: d.id }));
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+// Server first, but never hang without signal: fall back to what this phone already has.
+async function getDocsSafe(q) {
+  try { return await withTimeout(ff.getDocs(q), 6000); } catch { return ff.getDocsFromCache(q); }
+}
+async function getDocSafe(ref) {
+  try { return await withTimeout(ff.getDoc(ref), 6000); } catch { try { return await ff.getDocFromCache(ref); } catch { return null; } }
+}
+
+// Writes are applied to this phone at once and uploaded when there is signal. Never await them in the UI.
+let pendingWrites = 0;
+const pendingBy = {};
+const anyPending = () => pendingWrites > 0 || Object.values(pendingBy).some(Boolean);
+function errText(err, what) {
+  if (err && err.code === 'permission-denied') return `No tienes permiso para ${what}.`;
+  return `No se pudo ${what}. ${err && err.message ? err.message : ''}`;
+}
+function track(promise, what) {
+  pendingWrites++; renderSync();
+  promise.catch(err => { console.error(err); toast(errText(err, what), 7000); })
+    .finally(() => { pendingWrites--; renderSync(); });
+  return promise;
+}
+const commit = (batch, what) => track(batch.commit(), what);
+
+// Stock changes go as increments, so sales from several phones at once all add up correctly.
+function stockChanges(batch, changes, type, saleId = null) {
+  const now = new Date().toISOString();
+  let n = 0;
+  changes.forEach(({ itemId, delta }) => {
+    const item = invById(itemId);
+    if (!delta || !item) return; // deleted supply: skip instead of failing the whole batch
+    batch.update(dref('inventory', itemId), { stock: ff.increment(round3(delta)) });
+    batch.set(dref('movements', uid()), {
+      createdAt: now, itemId, itemName: item.name, unit: item.unit, delta: round3(delta),
+      stockAfter: round3((item.stock || 0) + delta), type, saleId, by: byMe()
+    });
+    n++;
+  });
+  return n;
+}
+
+/* ================= resúmenes diarios (dailyStats/{día}) =================
+   One small document per day with running totals. Week/month summaries read ≤31 of these
+   instead of thousands of sales. Sales add to it, voids subtract. */
+const productKey = i => `${i.productId}_${i.variantId || 'base'}`;
+function statsFromSale(sale) {
+  const s = { total: sale.total, tickets: 1, byMethod: { [sale.paymentMethod]: sale.total }, byChannel: {}, byProduct: {} };
+  sale.items.forEach(i => {
+    const amt = i.unitPrice * i.qty, ch = i.channel || 'tienda', k = productKey(i);
+    s.byChannel[ch] = (s.byChannel[ch] || 0) + amt;
+    const cur = s.byProduct[k] || { name: i.name + (i.variant ? ` (${i.variant})` : ''), qty: 0, amount: 0 };
+    cur.qty += i.qty; cur.amount += amt;
+    s.byProduct[k] = cur;
+  });
+  return s;
+}
+function statsPayload(sale, sign) {
+  const s = statsFromSale(sale), inc = v => ff.increment(sign * v);
+  const mapInc = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, inc(v)]));
+  return {
+    day: sale.day, total: inc(s.total), tickets: inc(1), byMethod: mapInc(s.byMethod), byChannel: mapInc(s.byChannel),
+    byProduct: Object.fromEntries(Object.entries(s.byProduct).map(([k, v]) => [k, { name: v.name, qty: inc(v.qty), amount: inc(v.amount) }]))
+  };
+}
+function buildStats(day, sales) { // full recount, used when importing
+  const out = { day, total: 0, tickets: 0, byMethod: {}, byChannel: {}, byProduct: {} };
+  sales.filter(s => !s.voided).forEach(sale => {
+    const s = statsFromSale(sale);
+    out.total += s.total; out.tickets += 1;
+    Object.entries(s.byMethod).forEach(([k, v]) => { out.byMethod[k] = (out.byMethod[k] || 0) + v; });
+    Object.entries(s.byChannel).forEach(([k, v]) => { out.byChannel[k] = (out.byChannel[k] || 0) + v; });
+    Object.entries(s.byProduct).forEach(([k, v]) => {
+      const cur = out.byProduct[k] || { name: v.name, qty: 0, amount: 0 };
+      cur.qty += v.qty; cur.amount += v.amount; out.byProduct[k] = cur;
+    });
+  });
+  return out;
+}
+function sumStats(list) {
+  const S = { total: 0, tickets: 0, byMethod: {}, byChannel: { tienda: 0, delivery: 0 }, byProduct: new Map() };
+  list.forEach(d => {
+    S.total += d.total || 0; S.tickets += d.tickets || 0;
+    Object.entries(d.byMethod || {}).forEach(([k, v]) => { S.byMethod[k] = (S.byMethod[k] || 0) + v; });
+    Object.entries(d.byChannel || {}).forEach(([k, v]) => { S.byChannel[k] = (S.byChannel[k] || 0) + v; });
+    Object.entries(d.byProduct || {}).forEach(([k, v]) => {
+      const cur = S.byProduct.get(k) || { name: v.name, qty: 0, amount: 0 };
+      cur.name = v.name || cur.name; cur.qty += v.qty || 0; cur.amount += v.amount || 0;
+      S.byProduct.set(k, cur);
+    });
+  });
+  return S;
+}
+
+/* ================= datos en vivo ================= */
+let liveUnsubs = [], profileUnsub = null;
+function stopLive() { liveUnsubs.forEach(u => u()); liveUnsubs = []; Object.keys(pendingBy).forEach(k => delete pendingBy[k]); }
+function sub(key, target, onData) {
+  liveUnsubs.push(ff.onSnapshot(target, { includeMetadataChanges: true }, snap => {
+    pendingBy[key] = snap.metadata.hasPendingWrites;
+    onData(snap);
+    scheduleRender();
+  }, err => console.warn(key, err)));
+}
+// Recent data stays live on the phone (and in its offline cache); older days are fetched when someone looks at them.
+function startLive() {
+  stopLive();
+  liveDay = localDay(); salesFrom = addDays(liveDay, -1); liveFrom = addDays(liveDay, -62);
+  const since = (name, from) => ff.query(col(name), ff.where('day', '>=', from));
+  sub('products', col('products'), snap => { products = docsOf(snap); if (!snap.metadata.fromCache) productsFromServer = true; });
+  sub('inventory', col('inventory'), snap => { inventory = docsOf(snap); });
+  sub('settings', dref('settings', 'main'), snap => { settings = { ...DEFAULT_SETTINGS, ...(snap.exists() ? snap.data() : {}) }; });
+  sub('users', col('users'), snap => { live.users = docsOf(snap); });
+  sub('sales', since('sales', salesFrom), snap => { live.sales = docsOf(snap); });
+  sub('expenses', since('expenses', liveFrom), snap => { live.expenses = docsOf(snap); });
+  sub('closures', since('closures', liveFrom), snap => { live.closures = docsOf(snap); });
+  sub('stats', since('dailyStats', liveFrom), snap => { live.stats = docsOf(snap); });
+  sub('movements', ff.query(col('movements'), ff.orderBy('createdAt', 'desc'), ff.limit(40)), snap => { live.movements = docsOf(snap); });
+}
+const LIVE_KEY = { sales: 'sales', expenses: 'expenses', closures: 'closures', dailyStats: 'stats' };
+async function rangeDocs(name, from, to) {
+  const windowStart = name === 'sales' ? salesFrom : liveFrom;
+  if (from >= windowStart) return live[LIVE_KEY[name]].filter(x => x.day >= from && x.day <= to);
+  return docsOf(await getDocsSafe(ff.query(col(name), ff.where('day', '>=', from), ff.where('day', '<=', to))));
+}
+// Keep the live window anchored to today if the app stays open past midnight.
+setInterval(() => {
+  if (!me || localDay() === liveDay) return;
+  ['#salesDate', '#expDate', '#closeDate'].forEach(s => { if ($(s).value === liveDay) $(s).value = localDay(); });
+  startLive();
+}, 60000);
+
+let renderTimer = null;
+function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(renderLive, 80); }
+const currentTab = () => (document.querySelector('.tab:not(.hidden)')?.id || 'tab-sell').replace('tab-', '');
+function renderLive() {
+  if (!me) return;
+  applyRoleUI(); renderHeader(); renderSync(); renderProductGrid(); renderCart(); checkBackupReminder();
+  const t = currentTab();
+  if (t === 'products') renderProductList();
+  if (t === 'sales') renderSales();
+  if (t === 'inventory') renderInventory();
+  if (t === 'expenses') renderExpenses();
+  if (t === 'close') { renderClose(false); renderSummary(); }
+  if (t === 'backup') { renderSettings(false); renderUsers(); renderAccount(); renderBackupInfo(); renderLegacy(); }
+}
+function renderHeader() {
+  $('#shopName').textContent = settings.shopName;
+  document.title = `${settings.shopName} · Punto de venta`;
+  $('#whoami').textContent = me ? `${me.name} · ${ROLE_LABEL[me.role] || ''}` : '';
+}
+function renderSync() {
+  const b = $('#syncBadge');
+  if (!me) { b.textContent = ''; b.className = 'pill hidden'; return; }
+  const online = navigator.onLine, pend = anyPending();
+  let txt = 'Sincronizado', cls = 'ok';
+  if (!online) { txt = pend ? 'Sin internet · cambios guardados aquí' : 'Sin internet'; cls = 'bajo'; }
+  else if (pend) { txt = pendingWrites > 0 ? `Subiendo ${pendingWrites}…` : 'Subiendo cambios…'; cls = 'bajo'; }
+  b.textContent = txt; b.className = 'pill ' + cls;
+}
+addEventListener('online', renderSync);
+addEventListener('offline', renderSync);
+
+/* ================= inicio de sesión ================= */
+function showAuth(state, msg = '') {
+  const s = $('#authScreen');
+  if (state === 'hidden') { s.classList.add('hidden'); return; }
+  s.classList.remove('hidden');
+  $('#authMsg').textContent = msg;
+  $('#loginForm').classList.toggle('hidden', state !== 'login');
+  $('#authActions').classList.toggle('hidden', state !== 'blocked' && state !== 'error');
+  $('#authSignOut').classList.toggle('hidden', state !== 'blocked');
+  $('#authRetry').classList.toggle('hidden', state !== 'error');
+}
+const AUTH_ERRORS = {
+  'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+  'auth/wrong-password': 'Correo o contraseña incorrectos.',
+  'auth/user-not-found': 'Correo o contraseña incorrectos.',
+  'auth/invalid-email': 'Ese correo no es válido.',
+  'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
+  'auth/network-request-failed': 'Sin internet. La primera vez que entras en un teléfono necesitas conexión.',
+  'auth/user-disabled': 'Esta cuenta está desactivada.',
+  'auth/email-already-in-use': 'Ya existe una cuenta con ese correo.',
+  'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.'
+};
+const authError = err => AUTH_ERRORS[err?.code] || `Algo salió mal (${err?.code || err?.message || 'error'}).`;
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#loginBtn').disabled = true;
+  $('#authMsg').textContent = 'Entrando…';
+  try {
+    await fa.signInWithEmailAndPassword(auth, $('#loginEmail').value.trim(), $('#loginPass').value);
+    $('#loginPass').value = '';
+  } catch (err) {
+    $('#authMsg').textContent = authError(err);
+  } finally { $('#loginBtn').disabled = false; }
+});
+$('#forgotPass').addEventListener('click', async () => {
+  const email = $('#loginEmail').value.trim();
+  if (!email) { $('#authMsg').textContent = 'Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".'; return; }
+  try {
+    await fa.sendPasswordResetEmail(auth, email);
+    $('#authMsg').textContent = `Si ${email} tiene cuenta, le llegará un correo para elegir una contraseña nueva.`;
+  } catch (err) { $('#authMsg').textContent = authError(err); }
+});
+$('#authRetry').addEventListener('click', () => location.reload());
+$('#authSignOut').addEventListener('click', () => fa.signOut(auth));
+
+function resetSession() {
+  stopLive();
+  if (profileUnsub) { profileUnsub(); profileUnsub = null; }
+  me = null; products = []; inventory = []; settings = { ...DEFAULT_SETTINGS }; productsFromServer = false;
+  Object.keys(live).forEach(k => { live[k] = []; });
+  cart.clear(); payment = null;
+  closeLock();
+  document.body.classList.remove('can-admin', 'can-super', 'cart-open');
+  renderSync();
+}
+function block(msg) { stopLive(); me = null; showAuth('blocked', msg); }
+function startApp() {
+  applyRoleUI(); renderHeader();
+  showAuth('hidden');
+  startLive();
+  showTab('sell');
+  if (lockEnabled()) openLock('unlock');
+  checkLegacy();
+}
+function onUser(user) {
+  resetSession();
+  if (!user) { showAuth('login', 'Entra con tu correo y contraseña.'); return; }
+  showAuth('loading', 'Cargando tu cuenta…');
+  const cached = ls.get('profile_' + user.uid);
+  if (user.uid === SUPER_UID) {
+    me = { uid: user.uid, email: user.email, name: cached?.name || user.email.split('@')[0], role: 'super' };
+    startApp();
+  }
+  profileUnsub = ff.onSnapshot(dref('users', user.uid), { includeMetadataChanges: true }, snap => {
+    if (user.uid === SUPER_UID) {
+      if (snap.exists()) { me.name = snap.data().name || me.name; ls.set('profile_' + user.uid, { name: me.name, role: 'super' }); renderHeader(); }
+      else if (!snap.metadata.fromCache) ff.setDoc(dref('users', user.uid), { name: me.name, email: user.email, role: 'super', active: true, createdAt: new Date().toISOString() }).catch(() => {});
+      return;
+    }
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d.active === false) return block('Tu cuenta está desactivada. Pide acceso al administrador.');
+      if (!ROLE_LABEL[d.role]) return block('Tu cuenta no tiene un rol válido. Pide ayuda al administrador.');
+      const first = !me;
+      me = { uid: user.uid, email: user.email, name: d.name || user.email, role: d.role };
+      ls.set('profile_' + user.uid, { name: me.name, role: me.role });
+      if (first) startApp(); else scheduleRender();
+    } else if (!snap.metadata.fromCache) {
+      ls.del('profile_' + user.uid);
+      block('Esta cuenta todavía no tiene permiso para usar la app. Pide al super usuario que te dé de alta.');
+    } else if (cached && !me) { // offline: trust the role this phone saw last time
+      me = { uid: user.uid, email: user.email, name: cached.name, role: cached.role };
+      startApp();
+    }
+  }, err => {
+    console.warn(err);
+    if (user.uid === SUPER_UID) return;
+    if (cached && !me) { me = { uid: user.uid, email: user.email, name: cached.name, role: cached.role }; startApp(); }
+    else if (!me) block('No se pudo verificar tu cuenta. Revisa tu conexión y vuelve a intentar.');
+  });
+}
+
+/* ================= bloqueo con PIN (por teléfono) ================= */
+const PIN_MIN = 4, PIN_MAX = 6;
+let lockCfg = ls.get('lock'), lockMode = null, pinBuf = '', pinFirst = '', lockResolve = null;
+let failCount = 0, blockedUntil = 0, lastActivity = Date.now(), hiddenAt = null;
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+const randHex = n => hex(crypto.getRandomValues(new Uint8Array(n)));
+async function hashSecret(secret, saltHex) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), 'PBKDF2', false, ['deriveBits']);
+  const salt = new Uint8Array(saltHex.match(/../g).map(x => parseInt(x, 16)));
+  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 150000 }, key, 256));
+}
+const lockEnabled = () => !!(lockCfg && lockCfg.hash);
+function makeRecoveryCode() {
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L, to avoid confusion when copying by hand
+  const v = crypto.getRandomValues(new Uint8Array(12));
+  const s = [...v].map(x => A[x % A.length]).join('');
+  return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8)}`;
+}
+const normCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+function renderDots() {
+  const n = Math.min(PIN_MAX, Math.max(PIN_MIN, pinBuf.length));
+  $('#pinDots').innerHTML = Array.from({ length: n }, (_, i) => `<span class="${i < pinBuf.length ? 'on' : ''}"></span>`).join('');
+}
+function shakeDots() {
+  const d = $('#pinDots');
+  d.classList.remove('shake'); void d.offsetWidth; d.classList.add('shake');
+}
+const LOCK_TEXT = {
+  unlock: ['', 'Escribe tu PIN'],
+  verify: ['Confirma tu PIN', 'Escribe tu PIN actual'],
+  set1: ['Nuevo PIN', `Elige un PIN de ${PIN_MIN} a ${PIN_MAX} números`],
+  set2: ['Nuevo PIN', 'Escríbelo otra vez para confirmar']
+};
+function openLock(mode, msg) {
+  lockMode = mode; pinBuf = '';
+  $('#lockTitle').textContent = mode === 'unlock' ? settings.shopName : LOCK_TEXT[mode][0];
+  $('#lockMsg').textContent = msg || LOCK_TEXT[mode][1];
+  $('#lockForgot').classList.toggle('hidden', !(mode === 'unlock' || mode === 'verify'));
+  $('#lockCancel').classList.toggle('hidden', mode === 'unlock' || !lockResolve);
+  document.querySelectorAll('dialog[open]').forEach(d => d.close());
+  document.body.classList.remove('cart-open');
+  $('#lockScreen').classList.remove('hidden');
+  renderDots();
+}
+function closeLock() {
+  $('#lockScreen').classList.add('hidden');
+  lockMode = null; pinBuf = '';
+  lastActivity = Date.now();
+}
+function lockApp() { if (lockEnabled() && me) openLock('unlock'); }
+const runLockFlow = mode => new Promise(res => { lockResolve = res; openLock(mode); });
+function finishFlow(ok) { const r = lockResolve; lockResolve = null; closeLock(); if (r) r(ok); }
+async function submitPin() {
+  if (pinBuf.length < PIN_MIN) { shakeDots(); $('#lockMsg').textContent = `El PIN debe tener al menos ${PIN_MIN} números.`; return; }
+  const pin = pinBuf;
+  if (lockMode === 'unlock' || lockMode === 'verify') {
+    if (Date.now() < blockedUntil) return;
+    const ok = (await hashSecret(pin, lockCfg.salt)) === lockCfg.hash;
+    if (ok) { failCount = 0; return lockMode === 'unlock' ? closeLock() : finishFlow(true); }
+    failCount++;
+    pinBuf = ''; renderDots(); shakeDots();
+    if (failCount >= 5) {
+      blockedUntil = Date.now() + 30000;
+      $('#lockMsg').textContent = 'Demasiados intentos. Espera 30 segundos.';
+      document.querySelectorAll('#keypad button').forEach(b => { b.disabled = true; });
+      setTimeout(() => {
+        document.querySelectorAll('#keypad button').forEach(b => { b.disabled = false; });
+        failCount = 0;
+        if (lockMode) $('#lockMsg').textContent = LOCK_TEXT[lockMode][1];
+      }, 30000);
+    } else {
+      $('#lockMsg').textContent = 'PIN incorrecto. Intenta otra vez.';
+    }
+    return;
+  }
+  if (lockMode === 'set1') { pinFirst = pin; return openLock('set2'); }
+  if (lockMode === 'set2') {
+    if (pin !== pinFirst) { pinFirst = ''; return openLock('set1', 'No coincidieron. Elige tu PIN otra vez.'); }
+    const code = makeRecoveryCode();
+    const salt = randHex(16), recSalt = randHex(16);
+    lockCfg = { autoLockMin: lockCfg?.autoLockMin || 5, salt, hash: await hashSecret(pin, salt), recSalt, recHash: await hashSecret(normCode(code), recSalt) };
+    ls.set('lock', lockCfg);
+    pinFirst = '';
+    finishFlow(true);
+    renderSecurity();
+    await showRecoveryCode(code);
+    toast('PIN activado.');
+  }
+}
+$('#keypad').addEventListener('click', e => {
+  const b = e.target.closest('[data-k]');
+  if (!b || b.disabled) return;
+  const k = b.dataset.k;
+  if (k === 'ok') return submitPin();
+  if (k === 'del') pinBuf = pinBuf.slice(0, -1);
+  else if (pinBuf.length < PIN_MAX) pinBuf += k;
+  renderDots();
+});
+document.addEventListener('keydown', e => {
+  if (!lockMode || $('#askDialog').open) return;
+  if (/^\d$/.test(e.key) && pinBuf.length < PIN_MAX) { pinBuf += e.key; renderDots(); }
+  else if (e.key === 'Backspace') { pinBuf = pinBuf.slice(0, -1); renderDots(); }
+  else if (e.key === 'Enter') submitPin();
+});
+$('#lockCancel').addEventListener('click', () => { pinFirst = ''; finishFlow(false); });
+$('#lockForgot').addEventListener('click', async () => {
+  const mode = lockMode, pending = lockResolve;
+  const code = await ask({ title: 'Recuperar acceso', text: 'Escribe el código de recuperación que se mostró al crear el PIN (ej. ABCD-EFGH-JKMN).', input: true, inputMode: 'text', ok: 'Continuar' });
+  if (code === null) return openLock(mode);
+  if ((await hashSecret(normCode(code), lockCfg.recSalt)) !== lockCfg.recHash) return openLock(mode, 'Ese código no es correcto.');
+  failCount = 0;
+  lockResolve = null;
+  await runLockFlow('set1');
+  if (mode === 'verify' && pending) pending(true);
+});
+async function showRecoveryCode(code) {
+  const p = ask({ title: 'Guarda tu código de recuperación', text: 'Si olvidas el PIN, este código es la única forma de quitarlo desde este teléfono. Anótalo en papel o tómale foto y guárdalo fuera del teléfono. No se volverá a mostrar.', ok: 'Ya lo guardé', cancel: false });
+  const box = document.createElement('div');
+  box.className = 'recovery-code'; box.textContent = code;
+  $('#askText').after(box);
+  await p;
+  box.remove();
+}
+function renderSecurity() {
+  const on = lockEnabled();
+  $('#pinStatus').innerHTML = on ? '<span class="pill ok">PIN activado</span>' : '<span class="pill bajo">Sin PIN</span>';
+  $('#pinEnable').classList.toggle('hidden', on);
+  $('#pinChange').classList.toggle('hidden', !on);
+  $('#pinDisable').classList.toggle('hidden', !on);
+  $('#autoLockLabel').classList.toggle('hidden', !on);
+  $('#setAutoLock').value = lockCfg?.autoLockMin || 5;
+  $('#lockNow').classList.toggle('hidden', !on);
+}
+$('#pinEnable').addEventListener('click', () => runLockFlow('set1'));
+$('#pinChange').addEventListener('click', async () => { if (await runLockFlow('verify')) await runLockFlow('set1'); });
+$('#pinDisable').addEventListener('click', async () => {
+  if (!(await runLockFlow('verify'))) return;
+  lockCfg = null; ls.del('lock');
+  renderSecurity();
+  toast('PIN quitado.');
+});
+$('#setAutoLock').addEventListener('change', () => {
+  if (!lockEnabled()) return;
+  const v = Math.min(120, Math.max(1, parseInt($('#setAutoLock').value, 10) || 5));
+  lockCfg.autoLockMin = v; $('#setAutoLock').value = v;
+  ls.set('lock', lockCfg);
+  toast(`Se bloqueará después de ${v} min sin uso.`);
+});
+$('#lockNow').addEventListener('click', lockApp);
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastActivity = Date.now(); }, { passive: true }));
+const autoLockMs = () => (lockCfg?.autoLockMin || 5) * 60000;
+setInterval(() => { if (lockEnabled() && me && !lockMode && Date.now() - lastActivity > autoLockMs()) lockApp(); }, 15000);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (lockEnabled() && me && !lockMode && hiddenAt && Date.now() - hiddenAt > autoLockMs()) lockApp();
+  hiddenAt = null;
+});
+
+/* ================= pestañas ================= */
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(s => s.classList.toggle('hidden', s.id !== 'tab-' + name));
   document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
-  if (name === 'sales') renderSales();
-  if (name === 'inventory') renderInventory();
-  if (name === 'backup') renderBackupInfo();
-  if (name === 'expenses') renderExpenses();
-  if (name === 'close') { renderClose(); renderSummary(); }
   $('#moreBtn').classList.toggle('active', ['products', 'inventory', 'backup'].includes(name));
   $('#moreMenu').classList.add('hidden');
   closeCart();
+  if (name === 'close') renderClose(true);
+  if (name === 'backup') { renderSettings(true); renderSecurity(); }
+  renderLive();
   window.scrollTo(0, 0);
 }
 $('#moreBtn').addEventListener('click', e => { e.stopPropagation(); $('#moreMenu').classList.toggle('hidden'); });
@@ -564,6 +1105,11 @@ $('#catChips').addEventListener('click', e => {
   catFilter = b.dataset.cat;
   renderProductGrid();
 });
+const hasDelivery = p => p.deliveryPrice != null && !isNaN(p.deliveryPrice);
+const variantsOf = p => p.variants || [];
+const variantOf = (p, vid) => variantsOf(p).find(v => v.id === vid) || null;
+const basePrice = (p, channel) => (channel === 'delivery' && hasDelivery(p) ? p.deliveryPrice : p.price);
+const unitPrice = (p, channel, v) => basePrice(p, channel) + (v ? v.extra || 0 : 0);
 function renderProductGrid() {
   renderChips();
   const q = $('#productSearch').value.trim().toLowerCase();
@@ -584,11 +1130,6 @@ function renderProductGrid() {
   ).join('');
 }
 $('#productSearch').addEventListener('input', renderProductGrid);
-const hasDelivery = p => p.deliveryPrice != null && !isNaN(p.deliveryPrice);
-const variantsOf = p => p.variants || [];
-const variantOf = (p, vid) => variantsOf(p).find(v => v.id === vid) || null;
-const basePrice = (p, channel) => (channel === 'delivery' && hasDelivery(p) ? p.deliveryPrice : p.price);
-const unitPrice = (p, channel, v) => basePrice(p, channel) + (v ? v.extra || 0 : 0);
 function addToCart(productId, channel, variantId = '') {
   const key = `${productId}|${channel}|${variantId || ''}`;
   cart.set(key, (cart.get(key) || 0) + 1);
@@ -621,6 +1162,7 @@ $('#productGrid').addEventListener('click', e => {
   const b = e.target.closest('[data-add]');
   if (!b) return;
   const p = products.find(x => x.id === b.dataset.add);
+  if (!p) return;
   if (!variantsOf(p).length && !hasDelivery(p)) return addToCart(p.id, 'tienda');
   pick.productId = p.id; pick.variantId = '';
   $('#priceDialogTitle').textContent = p.name;
@@ -637,7 +1179,7 @@ dialog.addEventListener('click', e => {
   }
   if (c) { addToCart(pick.productId, c.dataset.channel, pick.variantId); return dialog.close(); }
   if (e.target.id === 'priceBack') return showVariantStep();
-  if (e.target.id === 'priceCancel' || e.target === dialog) dialog.close(); // tap outside also closes
+  if (e.target.id === 'priceCancel' || e.target === dialog) dialog.close();
 });
 
 const cartItems = () => [...cart].map(([key, qty]) => {
@@ -654,7 +1196,6 @@ function cartConsumption() {
     .forEach(r => need.set(r.itemId, round3((need.get(r.itemId) || 0) + r.qty * qty))));
   return [...need].map(([itemId, qty]) => ({ itemId, name: invById(itemId)?.name || '?', qty })).filter(c => invById(c.itemId));
 }
-
 function renderCart() {
   const items = cartItems();
   $('#cartList').innerHTML = items.length ? items.map(({ key, p, v, channel, qty, price }) =>
@@ -668,6 +1209,7 @@ function renderCart() {
     ? 'Inventario insuficiente: ' + short.map(({ c, i }) => `${i.name} (hay ${fmtQty(i.stock)}, se usan ${fmtQty(c.qty)})`).join('; ') + '. Puedes cobrar igual.'
     : '';
   $('#cartTotal').textContent = money(cartTotal());
+  if (payment && !settings.paymentMethods.includes(payment)) payment = null;
   $('#paymentButtons').innerHTML = settings.paymentMethods.map(m =>
     `<button data-pay="${esc(m)}" class="${m === payment ? 'on' : ''}">${esc(m)}</button>`).join('');
   $('#cashBox').classList.toggle('hidden', !isCash(payment));
@@ -678,7 +1220,6 @@ function renderCart() {
   $('#cartBarTotal').textContent = money(cartTotal());
   if (!n) closeCart();
 }
-// Phone layout: the cart is a bottom sheet opened from the bar.
 const openCart = () => document.body.classList.add('cart-open');
 const closeCart = () => document.body.classList.remove('cart-open');
 $('#cartBar').addEventListener('click', openCart);
@@ -710,7 +1251,7 @@ $('#paymentButtons').addEventListener('click', e => {
   renderCart();
 });
 $('#clearCart').addEventListener('click', () => { cart.clear(); payment = null; $('#cashReceived').value = ''; renderCart(); });
-$('#completeSale').addEventListener('click', async () => {
+$('#completeSale').addEventListener('click', () => {
   const items = cartItems();
   if (!items.length) return toast('Agrega al menos un producto.');
   if (!payment) return toast('Elige la forma de pago.');
@@ -729,27 +1270,34 @@ $('#completeSale').addEventListener('click', async () => {
     id: uid(), createdAt: now.toISOString(), day: localDay(now),
     items: items.map(({ p, v, channel, qty, price }) => ({ productId: p.id, name: p.name, variantId: v ? v.id : null, variant: v ? v.name : null, channel, unitPrice: price, qty })),
     total, paymentMethod: payment, cashReceived, change, voided: false,
-    consumption // exactly what was taken from inventory, so voiding can give it back
+    consumption, // exactly what was taken from inventory, so voiding can give it back
+    createdBy: byMe()
   };
-  await runTx(['sales', 'inventory', 'movements'], t => {
-    t.objectStore('sales').put(sale);
-    applyStock(t, consumption.map(c => ({ itemId: c.itemId, delta: -c.qty })), 'venta', sale.id);
-  });
-  inventory = await getAll('inventory');
+  // Sale + daily totals in one batch; inventory in another, so a supply problem can never lose a sale.
+  const b1 = ff.writeBatch(fs);
+  b1.set(dref('sales', sale.id), sale);
+  b1.set(dref('dailyStats', sale.day), statsPayload(sale, 1), { merge: true });
+  commit(b1, 'guardar la venta');
+  const b2 = ff.writeBatch(fs);
+  const alerts = consumption.map(c => invById(c.itemId)).filter(Boolean)
+    .map(i => ({ ...i, stock: round3(i.stock - consumption.find(c => c.itemId === i.id).qty) }))
+    .filter(i => itemStatus(i) !== 'ok').map(i => `quedan ${fmtQty(i.stock)} ${i.unit} de ${i.name}`);
+  if (stockChanges(b2, consumption.map(c => ({ itemId: c.itemId, delta: -c.qty })), 'venta', sale.id)) commit(b2, 'descontar el inventario');
   cart.clear(); payment = null; $('#cashReceived').value = '';
-  renderCart(); renderProductGrid();
-  const alerts = consumption.map(c => invById(c.itemId)).filter(i => i && itemStatus(i) !== 'ok')
-    .map(i => `quedan ${fmtQty(i.stock)} ${i.unit} de ${i.name}`);
+  renderCart();
   let msg = change != null ? `Venta guardada. Cambio: ${money(change)}` : 'Venta guardada.';
   if (alerts.length) msg += ' ⚠ ' + alerts.join('; ');
   toast(msg, alerts.length ? 6000 : 3200);
-  checkBackupReminder();
 });
 
 /* ================= ventas ================= */
+let salesShown = new Map(), salesToken = 0;
 async function renderSales() {
+  const token = ++salesToken;
   const day = $('#salesDate').value || localDay();
-  const sales = (await req(store('sales').index('day').getAll(day))).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const sales = (await rangeDocs('sales', day, day)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (token !== salesToken) return;
+  salesShown = new Map(sales.map(s => [s.id, s]));
   const active = sales.filter(s => !s.voided);
   const total = active.reduce((s, x) => s + x.total, 0);
   const byMethod = {}, byChannel = { tienda: 0, delivery: 0 };
@@ -765,26 +1313,29 @@ async function renderSales() {
     Object.entries(byMethod).map(([m, v]) => `<div class="stat"><div class="k">${esc(m)}</div><div class="v">${money(v)}</div></div>`).join('');
   $('#salesList').innerHTML = sales.length ? sales.map(s => {
     const time = new Date(s.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const who = s.createdBy?.name ? ` · ${esc(s.createdBy.name)}` : '';
+    const voidInfo = s.voided ? ` · ANULADA${s.voidedBy?.name ? ' por ' + esc(s.voidedBy.name) : ''}` : '';
     return `<li class="${s.voided ? 'voided' : ''}"><div>
-      <div><strong class="amt">${money(s.total)}</strong> · ${esc(s.paymentMethod)}${s.voided ? ' · ANULADA' : ''}</div>
-      <div class="meta">${time} — ${esc(s.items.map(i => `${i.qty}× ${i.name}${i.variant ? ` (${i.variant})` : ''}${i.channel === 'delivery' ? ' · delivery' : ''}`).join(', '))}</div></div>
-      <button class="danger" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></li>`;
+      <div><strong class="amt">${money(s.total)}</strong> · ${esc(s.paymentMethod)}${voidInfo}</div>
+      <div class="meta">${time}${who} — ${esc(s.items.map(i => `${i.qty}× ${i.name}${i.variant ? ` (${i.variant})` : ''}${i.channel === 'delivery' ? ' · delivery' : ''}`).join(', '))}</div></div>
+      <button class="danger need-admin" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></li>`;
   }).join('') : '<li class="empty">No hay ventas este día.</li>';
 }
 $('#salesDate').addEventListener('change', renderSales);
 $('#salesList').addEventListener('click', async e => {
   const b = e.target.closest('[data-void]');
-  if (!b) return;
-  const sale = await req(store('sales').get(b.dataset.void));
-  if (!sale.voided && !(await ask({ title: '¿Anular esta venta?', text: 'Ya no contará en los totales y los insumos regresan al inventario.', ok: 'Anular' }))) return;
-  sale.voided = !sale.voided;
-  await runTx(['sales', 'inventory', 'movements'], t => {
-    t.objectStore('sales').put(sale);
-    applyStock(t, (sale.consumption || []).map(c => ({ itemId: c.itemId, delta: sale.voided ? c.qty : -c.qty })),
-      sale.voided ? 'anulación' : 'reactivación', sale.id);
-  });
-  inventory = await getAll('inventory');
-  renderSales(); renderProductGrid();
+  if (!b || !requireAdmin()) return;
+  const sale = salesShown.get(b.dataset.void);
+  if (!sale) return;
+  const toVoid = !sale.voided;
+  if (toVoid && !(await ask({ title: '¿Anular esta venta?', text: 'Ya no contará en los totales y los insumos regresan al inventario.', ok: 'Anular' }))) return;
+  const b1 = ff.writeBatch(fs);
+  b1.update(dref('sales', sale.id), { voided: toVoid, voidedBy: toVoid ? byMe() : null, voidedAt: toVoid ? new Date().toISOString() : null });
+  b1.set(dref('dailyStats', sale.day), statsPayload(sale, toVoid ? -1 : 1), { merge: true });
+  commit(b1, toVoid ? 'anular la venta' : 'reactivar la venta');
+  const b2 = ff.writeBatch(fs);
+  if (stockChanges(b2, (sale.consumption || []).map(c => ({ itemId: c.itemId, delta: toVoid ? c.qty : -c.qty })), toVoid ? 'anulación' : 'reactivación', sale.id)) commit(b2, 'actualizar el inventario');
+  toast(toVoid ? 'Venta anulada.' : 'Venta reactivada.');
 });
 
 /* ================= productos ================= */
@@ -817,7 +1368,7 @@ function readVariants() {
     const name = row.querySelector('.vName').value.trim();
     const extraRaw = row.querySelector('.vExtra').value.trim();
     const itemId = row.querySelector('.vItem').value, qty = parseNum(row.querySelector('.vQty').value);
-    if (!name && !extraRaw && !itemId) continue; // empty row
+    if (!name && !extraRaw && !itemId) continue;
     if (!name) return { error: 'Cada variante necesita un nombre.' };
     const extra = extraRaw === '' ? 0 : parseMoney(extraRaw);
     if (isNaN(extra) || extra < 0) return { error: `Precio extra no válido en "${name}".` };
@@ -826,11 +1377,12 @@ function readVariants() {
   return { variants: out };
 }
 function renderProductList() {
+  $('#seedBox').classList.toggle('hidden', !(products.length === 0 && productsFromServer));
   $('#categoryList').innerHTML = [...new Set(products.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('');
   $('#productList').innerHTML = products.length ? sortedProducts().map(p =>
     `<li><div class="item-main"><strong>${esc(p.name)}</strong> — <span class="price-txt">Tienda ${money(p.price)}${hasDelivery(p) ? ` · Delivery ${money(p.deliveryPrice)}` : ''}</span>
        <div class="meta">${p.category ? esc(p.category) + ' · ' : ''}${esc(recipeText(p))}</div></div>
-     <div class="row"><button class="secondary" data-edit="${p.id}">Editar</button><button class="danger" data-del="${p.id}">Eliminar</button></div></li>`
+     <div class="row need-admin"><button class="secondary" data-edit="${p.id}">Editar</button><button class="danger" data-del="${p.id}">Eliminar</button></div></li>`
   ).join('') : '<li class="empty">Aún no hay productos.</li>';
   renderRecipeHint();
 }
@@ -866,8 +1418,9 @@ function resetProductForm() {
   $('#productSave').textContent = 'Agregar producto';
   $('#productCancel').classList.add('hidden');
 }
-$('#productForm').addEventListener('submit', async e => {
+$('#productForm').addEventListener('submit', e => {
   e.preventDefault();
+  if (!requireAdmin()) return;
   const name = $('#productName').value.trim();
   const price = parseMoney($('#productPrice').value);
   if (!name) return toast('Escribe un nombre.');
@@ -878,15 +1431,14 @@ $('#productForm').addEventListener('submit', async e => {
   const { variants, error } = readVariants();
   if (error) return toast(error);
   const p = { id: $('#productId').value || uid(), name, price, deliveryPrice, category: $('#productCategory').value.trim(), recipe: readRecipe(), variants };
-  await put('products', p);
-  products = await getAll('products');
+  track(ff.setDoc(dref('products', p.id), p), 'guardar el producto');
   resetProductForm();
-  renderProductList(); renderProductGrid(); renderCart();
   toast('Producto guardado.');
 });
 $('#productCancel').addEventListener('click', resetProductForm);
 $('#productList').addEventListener('click', async e => {
   const ed = e.target.closest('[data-edit]'), dl = e.target.closest('[data-del]');
+  if ((ed || dl) && !requireAdmin()) return;
   if (ed) {
     const p = products.find(x => x.id === ed.dataset.edit);
     resetProductForm();
@@ -898,28 +1450,28 @@ $('#productList').addEventListener('click', async e => {
     $('#productFormTitle').textContent = 'Editar producto';
     $('#productSave').textContent = 'Guardar cambios';
     $('#productCancel').classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    $('#productForm').scrollIntoView({ behavior: 'smooth' });
   }
   if (dl) {
     const p = products.find(x => x.id === dl.dataset.del);
     if (!(await ask({ title: `¿Eliminar "${p.name}"?`, text: 'Las ventas anteriores se conservan.', ok: 'Eliminar' }))) return;
-    await req(store('products', 'readwrite').delete(p.id));
+    track(ff.deleteDoc(dref('products', p.id)), 'eliminar el producto');
     [...cart.keys()].filter(k => k.startsWith(p.id + '|')).forEach(k => cart.delete(k));
-    products = await getAll('products');
-    renderProductList(); renderProductGrid(); renderCart();
   }
+});
+$('#seedBtn').addEventListener('click', () => {
+  if (!requireAdmin() || products.length) return;
+  const b = ff.writeBatch(fs);
+  SEED_PRODUCTS.forEach(([name, price, category]) => {
+    const id = uid();
+    b.set(dref('products', id), { id, name, price: price * 100, deliveryPrice: null, category, recipe: [], variants: [] });
+  });
+  commit(b, 'cargar el menú');
+  toast('Menú cargado.');
 });
 
 /* ================= inventario ================= */
-function recentMovements(n) {
-  return new Promise((res, rej) => {
-    const out = [];
-    const r = store('movements').index('createdAt').openCursor(null, 'prev');
-    r.onsuccess = () => { const c = r.result; if (c && out.length < n) { out.push(c.value); c.continue(); } else res(out); };
-    r.onerror = () => rej(r.error);
-  });
-}
-async function renderInventory() {
+function renderInventory() {
   const counts = { bajo: 0, agotado: 0 };
   inventory.forEach(i => { const s = itemStatus(i); if (s !== 'ok') counts[s]++; });
   $('#invSummary').innerHTML =
@@ -938,16 +1490,15 @@ async function renderInventory() {
       </div>
       <div class="row">
         <button class="primary" data-in="${i.id}">+ Entrada</button>
-        <button class="secondary" data-count="${i.id}">Conteo</button>
-        <button class="secondary" data-iedit="${i.id}">Editar</button>
-        <button class="danger" data-idel="${i.id}">Eliminar</button>
+        <button class="secondary need-admin" data-count="${i.id}">Conteo</button>
+        <button class="secondary need-admin" data-iedit="${i.id}">Editar</button>
+        <button class="danger need-admin" data-idel="${i.id}">Eliminar</button>
       </div></li>`;
-  }).join('') : '<li class="empty">Aún no hay insumos. Agrega el primero abajo (por ejemplo, vasos).</li>';
+  }).join('') : `<li class="empty">Aún no hay insumos.${canAdmin() ? ' Agrega el primero abajo (por ejemplo, vasos).' : ''}</li>`;
   const TYPE = { venta: 'Venta', entrada: 'Entrada', ajuste: 'Conteo', alta: 'Alta', 'anulación': 'Venta anulada', 'reactivación': 'Venta reactivada' };
-  const movs = await recentMovements(40);
-  $('#movementList').innerHTML = movs.length ? movs.map(m =>
-    `<li><span><span class="meta">${fmtDateTime(m.createdAt)}</span> · ${esc(TYPE[m.type] || m.type)} · ${esc(m.itemName)}</span>
-     <span><span class="${m.delta >= 0 ? 'pos' : 'neg'}">${m.delta >= 0 ? '+' : ''}${fmtQty(m.delta)} ${esc(m.unit)}</span> <span class="meta">→ ${fmtQty(m.stockAfter)}</span></span></li>`
+  $('#movementList').innerHTML = live.movements.length ? live.movements.map(m =>
+    `<li><span><span class="meta">${fmtDateTime(m.createdAt)}</span> · ${esc(TYPE[m.type] || m.type)} · ${esc(m.itemName)}${m.by?.name ? ` <span class="meta">(${esc(m.by.name)})</span>` : ''}</span>
+     <span><span class="${m.delta >= 0 ? 'pos' : 'neg'}">${m.delta >= 0 ? '+' : ''}${fmtQty(m.delta)} ${esc(m.unit)}</span></span></li>`
   ).join('') : '<li class="hint">Sin movimientos todavía.</li>';
 }
 function resetItemForm() {
@@ -957,32 +1508,26 @@ function resetItemForm() {
   $('#itemSave').textContent = 'Agregar insumo';
   $('#itemCancel').classList.add('hidden');
 }
-async function refreshAfterInventoryChange() {
-  inventory = await getAll('inventory');
-  products = await getAll('products');
-  renderInventory(); renderProductGrid(); renderProductList(); renderCart();
-}
-$('#itemForm').addEventListener('submit', async e => {
+$('#itemForm').addEventListener('submit', e => {
   e.preventDefault();
+  if (!requireAdmin()) return;
   const name = $('#itemName').value.trim(), unit = $('#itemUnit').value.trim() || 'pza';
   const lowRaw = $('#itemLow').value.trim(), lowAt = lowRaw === '' ? null : parseNum(lowRaw);
   if (!name) return toast('Escribe un nombre.');
   if (lowAt !== null && (isNaN(lowAt) || lowAt < 0)) return toast('El aviso debe ser un número.');
   const id = $('#itemId').value;
   if (id) {
-    const item = invById(id);
-    await put('inventory', { ...item, name, unit, lowAt });
+    track(ff.updateDoc(dref('inventory', id), { name, unit, lowAt }), 'guardar el insumo');
   } else {
     const stock = parseNum($('#itemStock').value || '0');
     if (isNaN(stock)) return toast('La existencia debe ser un número.');
-    const item = { id: uid(), name, unit, stock: 0, lowAt, createdAt: new Date().toISOString() };
-    await runTx(['inventory', 'movements'], t => {
-      t.objectStore('inventory').put(item);
-      applyStock(t, [{ itemId: item.id, delta: stock }], 'alta');
-    });
+    const item = { id: uid(), name, unit, stock: round3(stock), lowAt, createdAt: new Date().toISOString() };
+    const b = ff.writeBatch(fs);
+    b.set(dref('inventory', item.id), item);
+    if (stock) b.set(dref('movements', uid()), { createdAt: item.createdAt, itemId: item.id, itemName: name, unit, delta: round3(stock), stockAfter: round3(stock), type: 'alta', saleId: null, by: byMe() });
+    commit(b, 'crear el insumo');
   }
   resetItemForm();
-  await refreshAfterInventoryChange();
   toast('Insumo guardado.');
 });
 $('#itemCancel').addEventListener('click', resetItemForm);
@@ -993,20 +1538,25 @@ $('#itemList').addEventListener('click', async e => {
     const i = invById(bIn.dataset.in);
     const q = parseNum(await ask({ title: `Entrada: ${i.name}`, text: `¿Cuántos ${i.unit} entraron?`, input: true, ok: 'Registrar' }));
     if (!(q > 0)) return;
-    await runTx(['inventory', 'movements'], t => applyStock(t, [{ itemId: i.id, delta: q }], 'entrada'));
-    await refreshAfterInventoryChange();
+    const b = ff.writeBatch(fs);
+    stockChanges(b, [{ itemId: i.id, delta: q }], 'entrada');
+    commit(b, 'registrar la entrada');
     toast(`Entrada registrada: +${fmtQty(q)} ${i.unit}`);
+    return;
   }
+  if ((bCount || bEdit || bDel) && !requireAdmin()) return;
   if (bCount) {
     const i = invById(bCount.dataset.count);
     const raw = await ask({ title: `Conteo: ${i.name}`, text: `Cuenta lo que hay físicamente. ¿Cuántos ${i.unit} hay?`, input: true, value: String(i.stock), ok: 'Guardar conteo' });
     if (raw === null) return;
     const real = parseNum(raw);
     if (isNaN(real) || real < 0) return toast('Escribe un número válido.');
-    const delta = round3(real - i.stock);
+    const cur = invById(i.id); // re-read: another phone may have sold since the dialog opened
+    const delta = round3(real - cur.stock);
     if (!delta) return toast('Sin cambios.');
-    await runTx(['inventory', 'movements'], t => applyStock(t, [{ itemId: i.id, delta }], 'ajuste'));
-    await refreshAfterInventoryChange();
+    const b = ff.writeBatch(fs);
+    stockChanges(b, [{ itemId: i.id, delta }], 'ajuste');
+    commit(b, 'guardar el conteo');
     toast(`Inventario ajustado a ${fmtQty(real)} ${i.unit}.`);
   }
   if (bEdit) {
@@ -1026,139 +1576,22 @@ $('#itemList').addEventListener('click', async e => {
     const extra = users.length ? ` También se quitará de ${users.length} producto(s).` : '';
     if (!(await ask({ title: `¿Eliminar "${i.name}"?`, text: extra.trim() || 'Se borrará este insumo.', ok: 'Eliminar' }))) return;
     const strip = rec => (rec || []).filter(r => r.itemId !== i.id);
-    await runTx(['inventory', 'products'], t => {
-      t.objectStore('inventory').delete(i.id);
-      users.forEach(p => t.objectStore('products').put({ ...p, recipe: strip(p.recipe), variants: variantsOf(p).map(v => ({ ...v, recipe: strip(v.recipe) })) }));
-    });
-    await refreshAfterInventoryChange();
+    const b = ff.writeBatch(fs);
+    b.delete(dref('inventory', i.id));
+    users.forEach(p => b.set(dref('products', p.id), clean({ ...p, recipe: strip(p.recipe), variants: variantsOf(p).map(v => ({ ...v, recipe: strip(v.recipe) })) })));
+    commit(b, 'eliminar el insumo');
   }
 });
-
-/* ================= respaldo ================= */
-function csvCell(v) {
-  const s = String(v ?? '');
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-const toCsv = rows => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\n'); // BOM so Excel reads accents
-async function buildExport() {
-  const [p, inv, mov, s, exp, clo] = await Promise.all([getAll('products'), getAll('inventory'), getAll('movements'), getAll('sales'), getAll('expenses'), getAll('closures')]);
-  exp.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  clo.sort((a, b) => a.day.localeCompare(b.day));
-  s.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  mov.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const stamp = localDay();
-  const slug = settings.shopName.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'negocio';
-  const json = JSON.stringify({ app: APP_ID, format: 3, exportedAt: new Date().toISOString(), settings, products: p, inventory: inv, movements: mov, sales: s, expenses: exp, closures: clo });
-  const hm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-  const sales = [['venta_id', 'fecha', 'hora', 'producto', 'variante', 'canal', 'cantidad', 'precio_unitario', 'importe', 'total_venta', 'forma_pago', 'anulada']];
-  s.forEach(sale => sale.items.forEach(i => sales.push([
-    sale.id, sale.day, hm(sale.createdAt), i.name, i.variant || '', CHANNEL_LABEL[i.channel || 'tienda'], i.qty, (i.unitPrice / 100).toFixed(2), (i.unitPrice * i.qty / 100).toFixed(2),
-    (sale.total / 100).toFixed(2), sale.paymentMethod, sale.voided ? 'si' : 'no'
-  ])));
-  const invRows = [['insumo', 'unidad', 'existencia', 'avisar_en', 'estado']];
-  inv.sort(byName).forEach(i => invRows.push([i.name, i.unit, i.stock, i.lowAt ?? '', STATUS_LABEL[itemStatus(i)]]));
-  const movRows = [['fecha', 'hora', 'tipo', 'insumo', 'cantidad', 'unidad', 'existencia_despues', 'venta_id']];
-  mov.forEach(m => movRows.push([localDay(new Date(m.createdAt)), hm(m.createdAt), m.type, m.itemName, m.delta, m.unit, m.stockAfter, m.saleId || '']));
-  const c2 = v => (v == null ? '' : (v / 100).toFixed(2));
-  const expRows = [['fecha', 'concepto', 'categoria', 'monto', 'pagado_con']];
-  exp.forEach(e => expRows.push([e.day, e.concept, e.category, c2(e.amount), e.paidFrom === 'caja' ? 'Caja' : 'Otro']));
-  const cloRows = [['fecha', 'fondo_inicial', 'ventas_efectivo', 'gastos_caja', 'esperado', 'contado', 'diferencia', 'retiro', 'queda_en_caja', 'notas']];
-  clo.forEach(c => cloRows.push([c.day, c2(c.openingCash), c2(c.cashSales), c2(c.cashExpenses), c2(c.expected), c2(c.counted), c2(c.difference), c2(c.withdrawn), c2(c.leftInRegister), c.notes || '']));
-  // Full backup is JSON saved as .txt: Chrome on Android won't share .json files, but .txt is allowed.
-  return [
-    new File([json], `${slug}-respaldo-${stamp}.txt`, { type: 'text/plain' }),
-    new File([toCsv(sales)], `${slug}-ventas-${stamp}.csv`, { type: 'text/csv' }),
-    new File([toCsv(invRows)], `${slug}-inventario-${stamp}.csv`, { type: 'text/csv' }),
-    new File([toCsv(movRows)], `${slug}-movimientos-${stamp}.csv`, { type: 'text/csv' }),
-    new File([toCsv(expRows)], `${slug}-gastos-${stamp}.csv`, { type: 'text/csv' }),
-    new File([toCsv(cloRows)], `${slug}-cierres-${stamp}.csv`, { type: 'text/csv' })
-  ];
-}
-function downloadFiles(files) {
-  files.forEach((f, i) => setTimeout(() => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(f); a.download = f.name;
-    document.body.append(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  }, i * 400));
-}
-async function markBackedUp() {
-  await setMeta('lastBackup', new Date().toISOString());
-  renderBackupInfo(); checkBackupReminder();
-}
-$('#shareBackup').addEventListener('click', async () => {
-  const files = await buildExport();
-  if (navigator.canShare && navigator.canShare({ files })) {
-    try {
-      await navigator.share({ files, title: `Respaldo ${settings.shopName}`, text: `Respaldo de ${settings.shopName} — ${new Date().toLocaleString('es-MX')}` });
-      await markBackedUp();
-      toast('Respaldo compartido.');
-    } catch (err) {
-      if (err.name === 'AbortError') return; // closed the share menu
-      downloadFiles(files); await markBackedUp();
-      toast('No se pudo compartir; los archivos se guardaron en Descargas.');
-    }
-  } else {
-    downloadFiles(files); await markBackedUp();
-    toast('Archivos guardados en Descargas. Adjúntalos a un correo.');
-  }
-});
-$('#downloadBackup').addEventListener('click', async () => {
-  downloadFiles(await buildExport()); await markBackedUp();
-  toast('Archivos guardados en Descargas.');
-});
-async function renderBackupInfo() {
-  const last = await getMeta('lastBackup');
-  $('#lastBackupText').textContent = last ? `Último respaldo: ${new Date(last).toLocaleString('es-MX')}` : 'Todavía no se ha enviado ningún respaldo.';
-}
-async function checkBackupReminder() {
-  const count = await req(store('sales').count());
-  const last = await getMeta('lastBackup');
-  const since = new Date(last || (await getMeta('firstUse')) || Date.now());
-  const days = Math.floor((Date.now() - since) / 864e5);
-  const due = count > 0 && days >= settings.reminderDays;
-  $('#backupBanner').classList.toggle('hidden', !due);
-  if (due) $('#backupBannerText').textContent = last ? `Tu último respaldo fue hace ${days} días.` : 'Aún no has enviado ningún respaldo.';
-}
-$('#restoreFile').addEventListener('change', async e => {
-  const file = e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  let data;
-  try { data = JSON.parse(await file.text()); } catch { return toast('Ese archivo no es un respaldo válido.'); }
-  if (!data || data.app !== APP_ID || !Array.isArray(data.products) || !Array.isArray(data.sales)) return toast('Ese archivo no es un respaldo válido.');
-  const inv = data.inventory || [], mov = data.movements || [], exps = data.expenses || [], clos = data.closures || [];
-  const when = data.exportedAt ? new Date(data.exportedAt).toLocaleString('es-MX') : 'fecha desconocida';
-  if (!(await ask({ title: '¿Reemplazar todos los datos?', text: `Se usará el respaldo del ${when}: ${data.products.length} productos, ${inv.length} insumos y ${data.sales.length} ventas. Lo que hay ahora en esta tablet se borra.`, ok: 'Restaurar' }))) return;
-  await runTx(['products', 'sales', 'inventory', 'movements', 'expenses', 'closures', 'meta'], t => {
-    ['products', 'sales', 'inventory', 'movements', 'expenses', 'closures'].forEach(n => t.objectStore(n).clear());
-    exps.forEach(e => t.objectStore('expenses').put(e));
-    clos.forEach(c => t.objectStore('closures').put(c));
-    data.products.forEach(p => t.objectStore('products').put(p));
-    data.sales.forEach(s => t.objectStore('sales').put(s));
-    inv.forEach(i => t.objectStore('inventory').put(i));
-    mov.forEach(m => t.objectStore('movements').put(m));
-    if (data.settings) t.objectStore('meta').put({ key: 'settings', value: data.settings });
-  });
-  await loadState();
-  toast('Respaldo restaurado.');
-});
-
-/* ================= fechas y rangos ================= */
-const parseDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
-const addDays = (s, n) => { const d = parseDay(s); d.setDate(d.getDate() + n); return localDay(d); };
-const rangeReq = (name, from, to) => req(store(name).index('day').getAll(IDBKeyRange.bound(from, to)));
-const daysBetween = (from, to) => { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; };
-const longDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-const shortDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
 
 /* ================= gastos ================= */
 const DEFAULT_EXP_CATEGORIES = ['Insumos', 'Renta', 'Servicios (luz, agua, gas)', 'Sueldos', 'Mantenimiento', 'Limpieza', 'Otros'];
+let expToken = 0;
 async function renderExpenses() {
+  const token = ++expToken;
   const day = $('#expDate').value || localDay();
-  const list = (await rangeReq('expenses', day, day)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const all = await getAll('expenses');
-  $('#expCategoryList').innerHTML = [...new Set([...DEFAULT_EXP_CATEGORIES, ...all.map(e => e.category).filter(Boolean)])].map(c => `<option value="${esc(c)}">`).join('');
+  const list = (await rangeDocs('expenses', day, day)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  if (token !== expToken) return;
+  $('#expCategoryList').innerHTML = [...new Set([...DEFAULT_EXP_CATEGORIES, ...live.expenses.map(e => e.category).filter(Boolean)])].map(c => `<option value="${esc(c)}">`).join('');
   const total = list.reduce((s, e) => s + e.amount, 0), fromCash = list.filter(e => e.paidFrom === 'caja').reduce((s, e) => s + e.amount, 0);
   $('#expSummary').innerHTML =
     `<div class="stat"><div class="k">Gastos del día</div><div class="v">${money(total)}</div></div>
@@ -1166,60 +1599,72 @@ async function renderExpenses() {
      <div class="stat"><div class="k">Pagados aparte</div><div class="v">${money(total - fromCash)}</div></div>`;
   $('#expList').innerHTML = list.length ? list.map(e =>
     `<li><div class="item-main"><strong>${esc(e.concept)}</strong> — <span class="price-txt">${money(e.amount)}</span>
-       <div class="meta">${e.category ? esc(e.category) + ' · ' : ''}${e.paidFrom === 'caja' ? 'Efectivo de la caja' : 'Pagado aparte'}</div></div>
-     <button class="danger" data-edel="${e.id}">Eliminar</button></li>`
+       <div class="meta">${e.category ? esc(e.category) + ' · ' : ''}${e.paidFrom === 'caja' ? 'Efectivo de la caja' : 'Pagado aparte'}${e.createdBy?.name ? ' · ' + esc(e.createdBy.name) : ''}</div></div>
+     <button class="danger need-admin" data-edel="${e.id}">Eliminar</button></li>`
   ).join('') : '<li class="empty">No hay gastos este día.</li>';
 }
 $('#expDate').addEventListener('change', renderExpenses);
-$('#expForm').addEventListener('submit', async e => {
+$('#expForm').addEventListener('submit', e => {
   e.preventDefault();
   const concept = $('#expConcept').value.trim(), amount = parseMoney($('#expAmount').value);
   if (!concept) return toast('Escribe el concepto.');
   if (isNaN(amount) || amount <= 0) return toast('Escribe un monto válido, ej. 250');
-  await put('expenses', {
+  const exp = {
     id: uid(), day: $('#expDate').value || localDay(), createdAt: new Date().toISOString(),
-    concept, category: $('#expCategory').value.trim(), amount, paidFrom: $('#expPaidFrom').value
-  });
+    concept, category: $('#expCategory').value.trim(), amount, paidFrom: $('#expPaidFrom').value, createdBy: byMe()
+  };
+  track(ff.setDoc(dref('expenses', exp.id), exp), 'guardar el gasto');
   const keepPaid = $('#expPaidFrom').value;
   $('#expForm').reset(); $('#expPaidFrom').value = keepPaid;
-  renderExpenses();
   toast('Gasto guardado.');
 });
 $('#expList').addEventListener('click', async e => {
   const b = e.target.closest('[data-edel]');
-  if (!b) return;
+  if (!b || !requireAdmin()) return;
   if (!(await ask({ title: '¿Eliminar este gasto?', ok: 'Eliminar' }))) return;
-  await req(store('expenses', 'readwrite').delete(b.dataset.edel));
-  renderExpenses();
+  track(ff.deleteDoc(dref('expenses', b.dataset.edel)), 'eliminar el gasto');
 });
 
 /* ================= cierre de caja ================= */
-let closeCtx = null;
-function previousClosure(day) {
-  return new Promise((res, rej) => {
-    const r = store('closures').openCursor(IDBKeyRange.upperBound(day, true), 'prev');
-    r.onsuccess = () => res(r.result ? r.result.value : null);
-    r.onerror = () => rej(r.error);
-  });
+let closeCtx = null, closeFormKey = '', closeToken = 0;
+async function previousClosure(day) {
+  const known = live.closures.filter(c => c.day < day).sort((a, b) => a.day.localeCompare(b.day)).pop();
+  if (known) return known;
+  return docsOf(await getDocsSafe(ff.query(col('closures'), ff.where('day', '<', day), ff.orderBy('day', 'desc'), ff.limit(1))))[0] || null;
+}
+async function closureFor(day) {
+  if (day >= liveFrom) return live.closures.find(c => c.day === day) || null;
+  const snap = await getDocSafe(dref('closures', day));
+  return snap && snap.exists() ? { ...snap.data(), id: snap.id } : null;
 }
 async function dayCash(day) {
-  const [sales, exps] = await Promise.all([rangeReq('sales', day, day), rangeReq('expenses', day, day)]);
-  const active = sales.filter(s => !s.voided);
-  const cashSales = active.filter(s => isCash(s.paymentMethod)).reduce((t, s) => t + s.total, 0);
-  const other = {};
-  active.filter(s => !isCash(s.paymentMethod)).forEach(s => { other[s.paymentMethod] = (other[s.paymentMethod] || 0) + s.total; });
+  const [stats, exps] = await Promise.all([rangeDocs('dailyStats', day, day), rangeDocs('expenses', day, day)]);
+  const S = sumStats(stats);
+  let cashSales = 0; const other = {};
+  Object.entries(S.byMethod).forEach(([m, v]) => { if (isCash(m)) cashSales += v; else if (v) other[m] = v; });
   const cashExpenses = exps.filter(e => e.paidFrom === 'caja').reduce((t, e) => t + e.amount, 0);
   return { cashSales, cashExpenses, other };
 }
 const toInput = c => (c == null ? '' : (c / 100).toFixed(2));
-async function renderClose() {
+// force = also reset the form fields (tab opened, date changed, saved). Live updates only refresh the numbers,
+// unless the day's closure changed on another phone and nobody is typing here.
+async function renderClose(force) {
+  const token = ++closeToken;
   const day = $('#closeDate').value || localDay();
-  const [cash, closure, prev] = await Promise.all([dayCash(day), req(store('closures').get(day)), previousClosure(day)]);
+  const [cash, closure] = await Promise.all([dayCash(day), closureFor(day)]);
+  if (token !== closeToken) return;
   closeCtx = { day, ...cash, closure };
-  $('#closeOpening').value = toInput(closure ? closure.openingCash : prev ? prev.leftInRegister : 0);
-  $('#closeCounted').value = toInput(closure?.counted);
-  $('#closeWithdrawn').value = closure ? toInput(closure.withdrawn) : '';
-  $('#closeNotes').value = closure?.notes || '';
+  const key = `${day}|${closure?.closedAt || ''}`;
+  const typing = $('#tab-close').contains(document.activeElement) && document.activeElement.tagName === 'INPUT';
+  if (force || (key !== closeFormKey && !typing)) {
+    closeFormKey = key;
+    const prev = closure ? null : await previousClosure(day);
+    if (token !== closeToken) return;
+    $('#closeOpening').value = toInput(closure ? closure.openingCash : prev ? prev.leftInRegister : 0);
+    $('#closeCounted').value = toInput(closure?.counted);
+    $('#closeWithdrawn').value = closure ? toInput(closure.withdrawn) : '';
+    $('#closeNotes').value = closure?.notes || '';
+  }
   $('#closeSave').textContent = closure ? 'Actualizar cierre' : 'Cerrar día';
   const otherTxt = Object.entries(cash.other).map(([m, v]) => `${m} ${money(v)}`).join(' · ');
   $('#closeOther').textContent = otherTxt ? `Cobros que no entran a la caja: ${otherTxt}.` : '';
@@ -1248,17 +1693,19 @@ function updateCloseCalc() {
   const c = closeCtx.closure;
   let status = '';
   if (c) {
-    status = `<p><span class="pill ok">Cerrado</span> <span class="meta">${fmtDateTime(c.closedAt)}</span></p>`;
+    status = `<p><span class="pill ok">Cerrado</span> <span class="meta">${fmtDateTime(c.closedAt)}${c.closedBy?.name ? ' · ' + esc(c.closedBy.name) : ''}</span></p>`;
     if (c.cashSales !== closeCtx.cashSales || c.cashExpenses !== closeCtx.cashExpenses)
       status += '<div class="warn-box">Hubo ventas, anulaciones o gastos después del cierre. Revisa el conteo y toca "Actualizar cierre".</div>';
   } else if (closeCtx.day < localDay()) {
     status = '<div class="warn-box">Este día no se cerró.</div>';
   }
+  if (anyPending()) status += '<div class="warn-box">Este teléfono tiene cambios que todavía no se suben. Conéctate a internet para que todo cuente.</div>';
   $('#closeStatus').innerHTML = status;
 }
 ['#closeOpening', '#closeCounted', '#closeWithdrawn'].forEach(s => $(s).addEventListener('input', updateCloseCalc));
-$('#closeDate').addEventListener('change', renderClose);
+$('#closeDate').addEventListener('change', () => renderClose(true));
 $('#closeSave').addEventListener('click', async () => {
+  if (!closeCtx) return;
   const opening = parseMoney($('#closeOpening').value || '0');
   const counted = parseMoney($('#closeCounted').value);
   const withdrawn = parseMoney($('#closeWithdrawn').value || '0');
@@ -1272,13 +1719,14 @@ $('#closeSave').addEventListener('click', async () => {
     const txt = difference > 0 ? `Hay ${money(difference)} de más.` : `Faltan ${money(-difference)}.`;
     if (!(await ask({ title: 'La caja no cuadra', text: `${txt} ¿Guardar el cierre así?`, ok: 'Guardar' }))) return;
   }
-  await put('closures', {
+  const closure = {
     day: closeCtx.day, closedAt: new Date().toISOString(), openingCash: opening,
     cashSales: closeCtx.cashSales, cashExpenses: closeCtx.cashExpenses, expected, counted, difference,
-    withdrawn, leftInRegister: counted - withdrawn, notes: $('#closeNotes').value.trim()
-  });
-  await renderClose(); renderSummary();
+    withdrawn, leftInRegister: counted - withdrawn, notes: $('#closeNotes').value.trim(), closedBy: byMe()
+  };
+  track(ff.setDoc(dref('closures', closure.day), closure), 'guardar el cierre');
   toast(`Día cerrado. Quedan ${money(counted - withdrawn)} en caja.`);
+  setTimeout(() => renderClose(true), 150);
 });
 
 /* ================= resumen día / semana / mes ================= */
@@ -1315,115 +1763,335 @@ function breakdownTable(title, rows, cols) {
   return `<h3 class="cat-title" style="font-size:17px"><span>✱</span>${title}</h3><div class="table-wrap"><table>
     <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`;
 }
+let summaryToken = 0;
 async function renderSummary() {
+  const token = ++summaryToken;
   const [from, to] = periodRange();
   $('#periodLabel').textContent = periodLabel(from, to);
-  const [sales, exps, clos] = await Promise.all([rangeReq('sales', from, to), rangeReq('expenses', from, to), req(store('closures').getAll(IDBKeyRange.bound(from, to)))]);
-  const active = sales.filter(s => !s.voided);
-  const total = active.reduce((t, s) => t + s.total, 0), spent = exps.reduce((t, e) => t + e.amount, 0);
-  const byMethod = {}, byChannel = { tienda: 0, delivery: 0 }, byProduct = new Map(), byCat = {};
-  active.forEach(s => {
-    byMethod[s.paymentMethod] = (byMethod[s.paymentMethod] || 0) + s.total;
-    s.items.forEach(i => {
-      byChannel[i.channel || 'tienda'] += i.unitPrice * i.qty;
-      const k = i.name + (i.variant ? ` (${i.variant})` : '');
-      const cur = byProduct.get(k) || { qty: 0, amount: 0 };
-      cur.qty += i.qty; cur.amount += i.unitPrice * i.qty; byProduct.set(k, cur);
-    });
-  });
+  const [stats, exps, clos] = await Promise.all([rangeDocs('dailyStats', from, to), rangeDocs('expenses', from, to), rangeDocs('closures', from, to)]);
+  if (token !== summaryToken) return;
+  const S = sumStats(stats);
+  const spent = exps.reduce((t, e) => t + e.amount, 0), byCat = {};
   exps.forEach(e => { const c = e.category || 'Sin categoría'; byCat[c] = (byCat[c] || 0) + e.amount; });
   const diffTotal = clos.reduce((t, c) => t + c.difference, 0);
   let html = `<div class="summary">
-    <div class="stat"><div class="k">Ventas</div><div class="v">${money(total)}</div></div>
+    <div class="stat"><div class="k">Ventas</div><div class="v">${money(S.total)}</div></div>
     <div class="stat"><div class="k">Gastos</div><div class="v">${money(spent)}</div></div>
-    <div class="stat"><div class="k">Ventas − gastos</div><div class="v">${money(total - spent)}</div></div>
-    <div class="stat"><div class="k">Tickets</div><div class="v">${active.length}</div></div>
-    <div class="stat"><div class="k">Ticket promedio</div><div class="v">${money(active.length ? Math.round(total / active.length) : 0)}</div></div>
+    <div class="stat"><div class="k">Ventas − gastos</div><div class="v">${money(S.total - spent)}</div></div>
+    <div class="stat"><div class="k">Tickets</div><div class="v">${S.tickets}</div></div>
+    <div class="stat"><div class="k">Ticket promedio</div><div class="v">${money(S.tickets ? Math.round(S.total / S.tickets) : 0)}</div></div>
     <div class="stat"><div class="k">Diferencias de caja</div><div class="v">${clos.length ? (diffTotal > 0 ? '+' : '') + money(diffTotal) : '—'}</div></div>
   </div>`;
   if (period.kind !== 'day') {
     const closMap = Object.fromEntries(clos.map(c => [c.day, c]));
+    const statMap = Object.fromEntries(stats.map(s => [s.day || s.id, s]));
     const rows = daysBetween(from, to).filter(d => d <= localDay()).map(d => {
-      const sv = active.filter(s => s.day === d).reduce((t, s) => t + s.total, 0);
+      const sv = statMap[d]?.total || 0;
       const ex = exps.filter(e => e.day === d).reduce((t, e) => t + e.amount, 0);
       const c = closMap[d];
-      const cierre = c ? (c.difference === 0 ? 'Cuadra' : (c.difference > 0 ? '+' : '−') + money(Math.abs(c.difference))) : (sv ? 'Sin cerrar' : '—');
+      const cierre = c ? (c.difference === 0 ? 'Cuadra' : (c.difference > 0 ? '+' : '') + money(c.difference)) : (sv ? 'Sin cerrar' : '—');
       return [esc(shortDay(d)), money(sv), money(ex), money(sv - ex), cierre];
     });
     html += breakdownTable('Por día', rows, ['Día', 'Ventas', 'Gastos', 'Neto', 'Caja']);
   }
-  html += breakdownTable('Formas de pago', Object.entries(byMethod).sort((a, b) => b[1] - a[1]).map(([m, v]) => [esc(m), money(v)]), ['Forma', 'Total']);
-  html += breakdownTable('Canal', [['En tienda', money(byChannel.tienda)], ['Delivery', money(byChannel.delivery)]], ['Canal', 'Total']);
-  html += breakdownTable('Más vendidos', [...byProduct].sort((a, b) => b[1].qty - a[1].qty || b[1].amount - a[1].amount).slice(0, 10)
-    .map(([n, v]) => [esc(n), v.qty, money(v.amount)]), ['Producto', 'Cant.', 'Total']);
+  html += breakdownTable('Formas de pago', Object.entries(S.byMethod).filter(([, v]) => v).sort((a, b) => b[1] - a[1]).map(([m, v]) => [esc(m), money(v)]), ['Forma', 'Total']);
+  html += breakdownTable('Canal', [['En tienda', money(S.byChannel.tienda || 0)], ['Delivery', money(S.byChannel.delivery || 0)]], ['Canal', 'Total']);
+  html += breakdownTable('Más vendidos', [...S.byProduct.values()].filter(v => v.qty > 0).sort((a, b) => b.qty - a.qty || b.amount - a.amount).slice(0, 10)
+    .map(v => [esc(v.name), v.qty, money(v.amount)]), ['Producto', 'Cant.', 'Total']);
   html += breakdownTable('Gastos por categoría', Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => [esc(c), money(v)]), ['Categoría', 'Total']);
-  if (!active.length && !exps.length) html += '<p class="empty">No hay ventas ni gastos en este periodo.</p>';
+  if (!S.tickets && !exps.length) html += '<p class="empty">No hay ventas ni gastos en este periodo.</p>';
   $('#summaryBody').innerHTML = html;
 }
 
-/* ================= ajustes ================= */
-function renderSettings() {
-  $('#shopName').textContent = settings.shopName;
-  document.title = `${settings.shopName} · Punto de venta`;
+/* ================= respaldo ================= */
+function csvCell(v) {
+  const s = String(v ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+const toCsv = rows => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\n'); // BOM so Excel reads accents
+async function buildExport() {
+  const all = async name => docsOf(await getDocsSafe(col(name)));
+  const [p, inv, mov, s, exp, clo] = await Promise.all(['products', 'inventory', 'movements', 'sales', 'expenses', 'closures'].map(all));
+  exp.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  clo.sort((a, b) => a.day.localeCompare(b.day));
+  s.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  mov.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const stamp = localDay();
+  const slug = settings.shopName.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'negocio';
+  const json = JSON.stringify({ app: APP_ID, format: 4, exportedAt: new Date().toISOString(), settings, products: p, inventory: inv, movements: mov, sales: s, expenses: exp, closures: clo });
+  const hm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const sales = [['venta_id', 'fecha', 'hora', 'producto', 'variante', 'canal', 'cantidad', 'precio_unitario', 'importe', 'total_venta', 'forma_pago', 'anulada', 'vendio']];
+  s.forEach(sale => sale.items.forEach(i => sales.push([
+    sale.id, sale.day, hm(sale.createdAt), i.name, i.variant || '', CHANNEL_LABEL[i.channel || 'tienda'], i.qty, (i.unitPrice / 100).toFixed(2), (i.unitPrice * i.qty / 100).toFixed(2),
+    (sale.total / 100).toFixed(2), sale.paymentMethod, sale.voided ? 'si' : 'no', sale.createdBy?.name || ''
+  ])));
+  const invRows = [['insumo', 'unidad', 'existencia', 'avisar_en', 'estado']];
+  inv.sort(byName).forEach(i => invRows.push([i.name, i.unit, i.stock, i.lowAt ?? '', STATUS_LABEL[itemStatus(i)]]));
+  const movRows = [['fecha', 'hora', 'tipo', 'insumo', 'cantidad', 'unidad', 'venta_id', 'usuario']];
+  mov.forEach(m => movRows.push([localDay(new Date(m.createdAt)), hm(m.createdAt), m.type, m.itemName, m.delta, m.unit, m.saleId || '', m.by?.name || '']));
+  const c2 = v => (v == null ? '' : (v / 100).toFixed(2));
+  const expRows = [['fecha', 'concepto', 'categoria', 'monto', 'pagado_con', 'usuario']];
+  exp.forEach(e => expRows.push([e.day, e.concept, e.category, c2(e.amount), e.paidFrom === 'caja' ? 'Caja' : 'Otro', e.createdBy?.name || '']));
+  const cloRows = [['fecha', 'fondo_inicial', 'ventas_efectivo', 'gastos_caja', 'esperado', 'contado', 'diferencia', 'retiro', 'queda_en_caja', 'notas', 'cerro']];
+  clo.forEach(c => cloRows.push([c.day, c2(c.openingCash), c2(c.cashSales), c2(c.cashExpenses), c2(c.expected), c2(c.counted), c2(c.difference), c2(c.withdrawn), c2(c.leftInRegister), c.notes || '', c.closedBy?.name || '']));
+  // Full backup is JSON saved as .txt: Chrome on Android won't share .json files, but .txt is allowed.
+  return [
+    new File([json], `${slug}-respaldo-${stamp}.txt`, { type: 'text/plain' }),
+    new File([toCsv(sales)], `${slug}-ventas-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(invRows)], `${slug}-inventario-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(movRows)], `${slug}-movimientos-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(expRows)], `${slug}-gastos-${stamp}.csv`, { type: 'text/csv' }),
+    new File([toCsv(cloRows)], `${slug}-cierres-${stamp}.csv`, { type: 'text/csv' })
+  ];
+}
+function downloadFiles(files) {
+  files.forEach((f, i) => setTimeout(() => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(f); a.download = f.name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }, i * 400));
+}
+function markBackedUp() { ls.set('lastBackup', new Date().toISOString()); renderBackupInfo(); checkBackupReminder(); }
+$('#shareBackup').addEventListener('click', async () => {
+  toast('Preparando respaldo…');
+  const files = await buildExport();
+  if (navigator.canShare && navigator.canShare({ files })) {
+    try {
+      await navigator.share({ files, title: `Respaldo ${settings.shopName}`, text: `Respaldo de ${settings.shopName} — ${new Date().toLocaleString('es-MX')}` });
+      markBackedUp();
+      toast('Respaldo compartido.');
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      downloadFiles(files); markBackedUp();
+      toast('No se pudo compartir; los archivos se guardaron en Descargas.');
+    }
+  } else {
+    downloadFiles(files); markBackedUp();
+    toast('Archivos guardados en Descargas. Adjúntalos a un correo.');
+  }
+});
+$('#downloadBackup').addEventListener('click', async () => {
+  toast('Preparando respaldo…');
+  downloadFiles(await buildExport()); markBackedUp();
+  toast('Archivos guardados en Descargas.');
+});
+function renderBackupInfo() {
+  const last = ls.get('lastBackup');
+  $('#lastBackupText').textContent = last ? `Último respaldo desde este teléfono: ${new Date(last).toLocaleString('es-MX')}` : 'Todavía no se ha enviado ningún respaldo desde este teléfono.';
+}
+function checkBackupReminder() {
+  if (!ls.get('firstUse')) ls.set('firstUse', new Date().toISOString());
+  const last = ls.get('lastBackup');
+  const days = Math.floor((Date.now() - new Date(last || ls.get('firstUse'))) / 864e5);
+  const due = canAdmin() && days >= reminderDays();
+  $('#backupBanner').classList.toggle('hidden', !due);
+  if (due) $('#backupBannerText').textContent = last ? `Tu último respaldo fue hace ${days} días.` : 'Aún no has enviado ningún respaldo.';
+}
+
+/* ================= importar (respaldo o datos viejos del teléfono) ================= */
+async function importData(data, progress = () => {}) {
+  if (!navigator.onLine) throw new Error('Se necesita internet para subir los datos.');
+  const ops = [];
+  if (data.settings && canAdmin()) {
+    const s = data.settings;
+    ops.push([dref('settings', 'main'), { shopName: s.shopName || DEFAULT_SETTINGS.shopName, currency: s.currency || '$', paymentMethods: s.paymentMethods || DEFAULT_SETTINGS.paymentMethods }]);
+  }
+  (data.products || []).forEach(p => ops.push([dref('products', p.id), clean({ deliveryPrice: null, recipe: [], variants: [], ...p })]));
+  (data.inventory || []).forEach(i => ops.push([dref('inventory', i.id), clean(i)]));
+  (data.movements || []).forEach(m => ops.push([dref('movements', m.id), clean(m)]));
+  (data.sales || []).forEach(s => ops.push([dref('sales', s.id), clean({ voided: false, ...s, createdBy: s.createdBy || { uid: me.uid, name: `${me.name} (importado)` } })]));
+  (data.expenses || []).forEach(e => ops.push([dref('expenses', e.id), clean(e)]));
+  (data.closures || []).forEach(c => ops.push([dref('closures', c.day), clean(c)]));
+  for (let i = 0; i < ops.length; i += 400) {
+    const b = ff.writeBatch(fs);
+    ops.slice(i, i + 400).forEach(([ref, d]) => b.set(ref, d));
+    await withTimeout(b.commit(), 120000);
+    progress(`Subiendo… ${Math.min(i + 400, ops.length)} de ${ops.length}`);
+  }
+  // Recount the daily totals of every affected day from the sales now in the cloud (safe to repeat).
+  const days = [...new Set((data.sales || []).map(s => s.day))].sort();
+  for (let i = 0; i < days.length; i += 50) {
+    const chunk = days.slice(i, i + 50);
+    const b = ff.writeBatch(fs);
+    for (const day of chunk) {
+      const sales = docsOf(await withTimeout(ff.getDocs(ff.query(col('sales'), ff.where('day', '==', day))), 60000));
+      b.set(dref('dailyStats', day), buildStats(day, sales));
+    }
+    await withTimeout(b.commit(), 120000);
+    progress(`Calculando resúmenes… ${Math.min(i + 50, days.length)} de ${days.length} días`);
+  }
+  return ops.length;
+}
+$('#restoreFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !isSuperUser()) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { return toast('Ese archivo no es un respaldo válido.'); }
+  if (!data || data.app !== APP_ID || !Array.isArray(data.products) || !Array.isArray(data.sales)) return toast('Ese archivo no es un respaldo válido.');
+  const when = data.exportedAt ? new Date(data.exportedAt).toLocaleString('es-MX') : 'fecha desconocida';
+  if (!(await ask({ title: '¿Subir este respaldo a la nube?', text: `Respaldo del ${when}: ${data.products.length} productos, ${(data.inventory || []).length} insumos y ${data.sales.length} ventas. Se agregan o actualizan; no se borra nada. Las existencias de inventario quedan como en el respaldo.`, ok: 'Subir' }))) return;
+  try { await importData(data, msg => toast(msg, 60000)); toast('Respaldo subido.'); }
+  catch (err) { toast(errText(err, 'subir el respaldo'), 8000); }
+});
+
+let legacyData = null;
+async function readLegacy() {
+  try {
+    if (indexedDB.databases) { const dbs = await indexedDB.databases(); if (!dbs.some(d => d.name === 'pos-db')) return null; }
+    const db = await new Promise((res, rej) => {
+      const r = indexedDB.open('pos-db');
+      r.onupgradeneeded = () => r.transaction.abort(); // it didn't exist: don't create it
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+    });
+    const names = [...db.objectStoreNames];
+    const all = name => names.includes(name) ? new Promise((res, rej) => { const q = db.transaction(name).objectStore(name).getAll(); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }) : Promise.resolve([]);
+    const [products, sales, inventory, movements, expenses, closures, meta] = await Promise.all(['products', 'sales', 'inventory', 'movements', 'expenses', 'closures', 'meta'].map(all));
+    db.close();
+    if (!products.length && !sales.length && !inventory.length) return null;
+    return { app: APP_ID, products, sales, inventory, movements, expenses, closures, settings: meta.find(m => m.key === 'settings')?.value || null };
+  } catch { return null; }
+}
+async function checkLegacy() { if (canAdmin() && !ls.get('legacyDone')) { legacyData = await readLegacy(); renderLegacy(); } }
+function renderLegacy() {
+  const show = !!legacyData && canAdmin() && !ls.get('legacyDone');
+  $('#legacyCard').classList.toggle('hidden', !show);
+  if (show) $('#legacyText').textContent = `Este teléfono tiene datos de la versión anterior: ${legacyData.products.length} productos, ${legacyData.inventory.length} insumos, ${legacyData.sales.length} ventas, ${legacyData.expenses.length} gastos y ${legacyData.closures.length} cierres.`;
+}
+$('#legacyUpload').addEventListener('click', async () => {
+  if (!legacyData || !requireAdmin()) return;
+  if (!(await ask({ title: '¿Subir estos datos a la nube?', text: 'Hazlo solo desde el teléfono que se usaba antes. Si ya hay productos o insumos con el mismo registro en la nube, se actualizan con los de este teléfono.', ok: 'Subir' }))) return;
+  $('#legacyUpload').disabled = true;
+  try {
+    await importData(legacyData, msg => { $('#legacyProgress').textContent = msg; });
+    ls.set('legacyDone', true);
+    $('#legacyProgress').textContent = '';
+    renderLegacy();
+    toast('Datos subidos a la nube.', 5000);
+  } catch (err) {
+    $('#legacyProgress').textContent = errText(err, 'subir los datos') + ' Puedes intentarlo otra vez; no se duplica nada.';
+  } finally { $('#legacyUpload').disabled = false; }
+});
+
+/* ================= usuarios (super usuario) ================= */
+function renderUsers() {
+  if (!isSuperUser()) return;
+  const list = [...live.users].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+  $('#userList').innerHTML = list.length ? list.map(u => {
+    const self = u.id === me.uid || u.id === SUPER_UID;
+    const status = u.active === false ? '<span class="pill agotado">Desactivado</span>' : `<span class="pill ok">${esc(ROLE_LABEL[u.role] || u.role)}</span>`;
+    return `<li class="user-row"><div class="item-main"><strong>${esc(u.name || '')}</strong> ${status}<div class="meta">${esc(u.email || '')}</div></div>
+      ${self ? '' : `<div class="row">
+        <select data-role="${u.id}" aria-label="Rol"><option value="regular"${u.role === 'regular' ? ' selected' : ''}>Cajero</option><option value="admin"${u.role === 'admin' ? ' selected' : ''}>Administrador</option></select>
+        <button class="secondary" data-reset="${esc(u.email || '')}">Cambiar contraseña</button>
+        <button class="danger" data-active="${u.id}">${u.active === false ? 'Activar' : 'Desactivar'}</button></div>`}</li>`;
+  }).join('') : '<li class="empty">Todavía no hay usuarios.</li>';
+}
+$('#userList').addEventListener('change', e => {
+  const s = e.target.closest('[data-role]');
+  if (!s || !isSuperUser()) return;
+  track(ff.updateDoc(dref('users', s.dataset.role), { role: s.value }), 'cambiar el rol');
+  toast('Rol actualizado.');
+});
+$('#userList').addEventListener('click', async e => {
+  const r = e.target.closest('[data-reset]'), a = e.target.closest('[data-active]');
+  if (!isSuperUser()) return;
+  if (r) {
+    try { await fa.sendPasswordResetEmail(auth, r.dataset.reset); toast(`Se envió un correo a ${r.dataset.reset} para elegir contraseña nueva.`, 5000); }
+    catch (err) { toast(authError(err), 6000); }
+  }
+  if (a) {
+    const u = live.users.find(x => x.id === a.dataset.active);
+    const activate = u.active === false;
+    if (!activate && !(await ask({ title: `¿Desactivar a ${u.name}?`, text: 'Ya no podrá ver ni registrar nada. Sus ventas anteriores se conservan.', ok: 'Desactivar' }))) return;
+    track(ff.updateDoc(dref('users', u.id), { active: activate }), activate ? 'activar al usuario' : 'desactivar al usuario');
+  }
+});
+$('#userForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!isSuperUser()) return;
+  const name = $('#uName').value.trim(), email = $('#uEmail').value.trim().toLowerCase(), password = $('#uPass').value, role = $('#uRole').value;
+  if (!navigator.onLine) return toast('Se necesita internet para crear usuarios.');
+  $('#uSave').disabled = true;
+  try {
+    // A second Firebase instance creates the account, so the super user stays signed in here.
+    if (!secAuth) secAuth = fa.initializeAuth(fapp.initializeApp(FIREBASE_CONFIG, 'alta-usuarios'), { persistence: fa.inMemoryPersistence });
+    const cred = await fa.createUserWithEmailAndPassword(secAuth, email, password);
+    await fa.signOut(secAuth);
+    await withTimeout(ff.setDoc(dref('users', cred.user.uid), { name, email, role, active: true, createdAt: new Date().toISOString(), createdBy: byMe() }), 20000);
+    $('#userForm').reset();
+    toast(`Usuario creado: ${name} (${ROLE_LABEL[role]}).`, 5000);
+  } catch (err) {
+    toast(err?.code ? authError(err) : errText(err, 'crear el usuario'), 7000);
+  } finally { $('#uSave').disabled = false; }
+});
+
+/* ================= mi cuenta y ajustes ================= */
+function renderAccount() {
+  if (!me) return;
+  $('#accountInfo').innerHTML = `<strong>${esc(me.name)}</strong> · ${esc(ROLE_LABEL[me.role])}<br><span class="meta">${esc(me.email)}</span>`;
+}
+$('#myPassword').addEventListener('click', async () => {
+  try { await fa.sendPasswordResetEmail(auth, me.email); toast(`Te enviamos un correo a ${me.email} para elegir una contraseña nueva.`, 5000); }
+  catch (err) { toast(authError(err), 6000); }
+});
+$('#signOutBtn').addEventListener('click', async () => {
+  const text = anyPending()
+    ? 'Este teléfono tiene cambios que todavía no se suben. Si cierras sesión sin internet, podrían perderse. Conéctate primero.'
+    : 'Para volver a entrar necesitarás tu correo y contraseña (y conexión a internet).';
+  if (!(await ask({ title: '¿Cerrar sesión?', text, ok: 'Cerrar sesión' }))) return;
+  fa.signOut(auth);
+});
+function renderSettings(force) {
+  renderHeader();
+  if (!force && $('#settingsForm').contains(document.activeElement)) return;
   $('#setShopName').value = settings.shopName;
   $('#setCurrency').value = settings.currency;
   $('#setMethods').value = settings.paymentMethods.join(', ');
-  $('#setReminder').value = settings.reminderDays;
+  $('#setReminder').value = reminderDays();
+  document.querySelectorAll('#settingsForm .admin-input').forEach(i => { i.disabled = !canAdmin(); });
 }
-$('#settingsForm').addEventListener('submit', async e => {
+$('#settingsForm').addEventListener('submit', e => {
   e.preventDefault();
-  const methods = $('#setMethods').value.split(',').map(s => s.trim()).filter(Boolean);
-  settings = {
-    shopName: $('#setShopName').value.trim() || DEFAULT_SETTINGS.shopName,
-    currency: $('#setCurrency').value,
-    paymentMethods: methods.length ? methods : DEFAULT_SETTINGS.paymentMethods,
-    reminderDays: Math.max(1, parseInt($('#setReminder').value, 10) || DEFAULT_SETTINGS.reminderDays)
-  };
-  await setMeta('settings', settings);
-  if (payment && !settings.paymentMethods.includes(payment)) payment = null;
-  renderAll();
+  ls.set('reminderDays', Math.max(1, parseInt($('#setReminder').value, 10) || 14));
+  if (canAdmin()) {
+    const methods = $('#setMethods').value.split(',').map(s => s.trim()).filter(Boolean);
+    const next = {
+      shopName: $('#setShopName').value.trim() || DEFAULT_SETTINGS.shopName,
+      currency: $('#setCurrency').value,
+      paymentMethods: methods.length ? methods : DEFAULT_SETTINGS.paymentMethods
+    };
+    track(ff.setDoc(dref('settings', 'main'), next), 'guardar los ajustes');
+  }
+  checkBackupReminder();
   toast('Ajustes guardados.');
 });
 async function ensurePersistentStorage() {
-  if (!navigator.storage || !navigator.storage.persist) {
-    $('#storageText').textContent = 'Este navegador no puede proteger los datos. Envía respaldos seguido.';
-    return;
-  }
+  if (!navigator.storage || !navigator.storage.persist) return;
   let ok = await navigator.storage.persisted();
   if (!ok) ok = await navigator.storage.persist();
   $('#storageText').textContent = ok
-    ? 'Datos protegidos: el navegador no los borrará por su cuenta.'
-    : 'Datos aún no protegidos. Instalar la app en la pantalla de inicio suele resolverlo. Sigue enviando respaldos.';
+    ? 'Este teléfono guarda una copia de los datos para trabajar sin internet.'
+    : 'Instala la app en la pantalla de inicio para que el teléfono conserve la copia sin internet.';
 }
 
 /* ================= arranque ================= */
-function renderAll() {
-  renderSettings(); renderProductGrid(); renderCart(); renderProductList(); renderSales(); renderInventory(); renderBackupInfo(); checkBackupReminder();
-}
-async function loadState() {
-  settings = { ...DEFAULT_SETTINGS, ...((await getMeta('settings')) || {}) };
-  [products, inventory] = await Promise.all([getAll('products'), getAll('inventory')]);
-  cart.clear(); payment = null;
-  renderAll();
-}
 (async function init() {
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  ['#salesDate', '#expDate', '#closeDate'].forEach(s => { $(s).value = localDay(); });
+  renderSecurity();
+  showAuth('loading', 'Cargando…');
   try {
-    db = await openDB();
+    await loadFirebase();
   } catch (err) {
-    document.querySelector('main').innerHTML = '<p class="empty">Este navegador no puede guardar datos. Abre la app en Chrome.</p>';
+    console.error(err);
+    showAuth('error', 'No se pudo cargar la app. Conéctate a internet y toca Reintentar (solo hace falta la primera vez en cada teléfono).');
     return;
   }
-  if (!(await getMeta('firstUse'))) {
-    await setMeta('firstUse', new Date().toISOString());
-    if (!(await getAll('products')).length) {
-      await runTx(['products'], t => SEED_PRODUCTS.forEach(([name, price, category]) =>
-        t.objectStore('products').put({ id: uid(), name, price: price * 100, deliveryPrice: null, category, recipe: [] })));
-    }
-  }
-  $('#salesDate').value = localDay(); $('#expDate').value = localDay(); $('#closeDate').value = localDay();
-  await loadState();
   ensurePersistentStorage();
-  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+  fa.onAuthStateChanged(auth, onUser);
 })();
 </script>
 </body>
