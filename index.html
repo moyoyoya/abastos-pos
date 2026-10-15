@@ -203,6 +203,15 @@ body:not(.can-super) .need-super{display:none!important}
 .user-row select{width:auto;min-height:40px;padding:6px 8px}
 .sub-h{font-family:var(--display);text-transform:uppercase;letter-spacing:.04em;font-size:16px;margin:16px 0 4px}
 .progress{font-family:var(--display);margin:8px 0}
+.list li.sale{display:block}
+.sale-head{display:flex;justify-content:space-between;align-items:center;gap:6px 10px;flex-wrap:wrap;font-size:15px}
+.sale-items{margin:8px 0 4px}
+.sale-items td{padding:5px 4px;font-size:15px}
+.sale-items td.q{width:38px;text-align:left;color:var(--muted);font-variant-numeric:tabular-nums}
+.sale-items td:nth-child(2){text-align:left;white-space:normal}
+.sale-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--rule);padding-top:6px;font-family:var(--display);font-size:18px;text-transform:uppercase}
+.sale-actions{margin-top:10px}
+.edit-banner{margin:4px 0 8px;padding:8px 10px;border-radius:6px;background:var(--low-bg);color:var(--low-ink);font-size:14px}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;max-width:90vw;z-index:10}
 </style>
 </head>
@@ -219,7 +228,7 @@ body:not(.can-super) .need-super{display:none!important}
     <h2>Abastos Brew</h2>
     <p id="authMsg" class="hint">Cargando…</p>
     <form id="loginForm" class="auth-form hidden">
-      <label>Correo<input id="loginEmail" type="email" autocomplete="username" required></label>
+      <label>Usuario o correo<input id="loginEmail" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
       <label>Contraseña<input id="loginPass" type="password" autocomplete="current-password" required></label>
       <button class="primary" type="submit" id="loginBtn">Entrar</button>
       <button type="button" class="link-btn" id="forgotPass">¿Olvidaste tu contraseña?</button>
@@ -248,6 +257,7 @@ body:not(.can-super) .need-super{display:none!important}
     </div>
   </div>
 </div>
+<div id="clockBanner" class="banner hidden"></div>
 <div id="backupBanner" class="banner hidden"><span id="backupBannerText"></span><button data-go="backup">Respaldar</button></div>
 <nav class="tabs">
   <button data-tab="sell" class="active">Vender</button>
@@ -277,7 +287,8 @@ body:not(.can-super) .need-super{display:none!important}
         <p id="noProducts" class="empty hidden">Aún no hay productos. Agrégalos en la pestaña Productos.</p>
       </div>
       <aside class="cart">
-        <div class="sheet-head"><h2>Venta actual</h2><button type="button" id="cartClose" class="close-btn phone-only" aria-label="Cerrar">✕</button></div>
+        <div class="sheet-head"><h2 id="cartTitle">Venta actual</h2><button type="button" id="cartClose" class="close-btn phone-only" aria-label="Cerrar">✕</button></div>
+        <div id="editBanner" class="edit-banner hidden"></div>
         <ul id="cartList"></ul>
         <div id="cartStockWarn" class="stock-warn hidden"></div>
         <div class="total-row"><span>Total</span><strong id="cartTotal"></strong></div>
@@ -437,13 +448,15 @@ body:not(.can-super) .need-super{display:none!important}
       <button type="button" class="primary" id="legacyUpload">Subir a la nube</button>
       <div id="legacyProgress" class="progress"></div>
     </div>
-    <div class="card need-super">
+    <div class="card need-admin">
       <h2>Usuarios</h2>
+      <p class="hint">Administradores y el super usuario pueden crear cuentas, cambiar roles, asignar contraseñas nuevas y desactivar.</p>
       <ul id="userList" class="list"></ul>
       <form id="userForm">
         <h3 class="sub-h">Nuevo usuario</h3>
         <label>Nombre<input id="uName" required placeholder="Ej.: María"></label>
-        <label>Correo<input id="uEmail" type="email" required autocomplete="off"></label>
+        <label>Usuario para entrar<input id="uUser" required autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="Ej.: maria"></label>
+        <label>Correo (opcional, sirve para recuperar la contraseña)<input id="uEmail" type="email" autocomplete="off"></label>
         <label>Contraseña temporal (mínimo 6 caracteres)<input id="uPass" type="text" required minlength="6" autocomplete="off"></label>
         <label>Rol
           <select id="uRole">
@@ -452,7 +465,7 @@ body:not(.can-super) .need-super{display:none!important}
           </select>
         </label>
         <button class="primary" type="submit" id="uSave">Crear usuario</button>
-        <p class="hint">Necesita internet. Dale a la persona su correo y contraseña; después puede cambiarla.</p>
+        <p class="hint">Necesita internet. Dale a la persona su usuario y contraseña; después puede cambiarla en Mi cuenta. El usuario lleva solo minúsculas, números, punto, guion o guion bajo.</p>
       </form>
     </div>
     <div class="card">
@@ -532,6 +545,11 @@ const FIREBASE_CONFIG = {
 };
 // The super user is fixed by account UID, here and in firestore.rules. Everyone else gets a role in users/{uid}.
 const SUPER_UID = 'pNHsoXTZelQyNl785pceyifj30b2';
+// Firebase logins need an email. Username-only accounts get one under the project's own domain (no mail is ever sent there).
+const LOGIN_DOMAIN = 'abastosbrew-gdl.firebaseapp.com';
+const USERNAME_RE = /^[a-z0-9][a-z0-9._-]{2,29}$/;
+const normUser = s => String(s || '').trim().toLowerCase();
+const isSynthetic = email => String(email || '').endsWith('@' + LOGIN_DOMAIN);
 const FB_URL = 'https://www.gstatic.com/firebasejs/12.19.0/';
 const DEFAULT_SETTINGS = { shopName: 'Abastos Brew', currency: '$', paymentMethods: ['Efectivo', 'Tarjeta', 'Transferencia', 'App delivery'] };
 const CHANNEL_LABEL = { tienda: 'En tienda', delivery: 'Delivery' };
@@ -577,19 +595,37 @@ const reminderDays = () => ls.get('reminderDays', 14);
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const pad = n => String(n).padStart(2, '0');
 const round3 = x => Math.round(x * 1000) / 1000;
-const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const parseDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
-const addDays = (s, n) => { const d = parseDay(s); d.setDate(d.getDate() + n); return localDay(d); };
+// All days and times follow the shop's clock (Guadalajara), whatever the time zone of the phone looking at them.
+const SHOP_TZ = 'America/Mexico_City';
+// The phone's clock can be wrong. When online, the app measures the gap against Firebase's server clock
+// and uses the corrected time for everything it records; offline it keeps the last measured gap.
+let clockOffset = 0;
+try { clockOffset = Number(JSON.parse(localStorage.getItem('abastos_clockOffset'))) || 0; } catch {}
+const nowMs = () => Date.now() + clockOffset;
+const nowDate = () => new Date(nowMs());
+const nowIso = () => nowDate().toISOString();
+const shopParts = (d = nowDate()) => Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: SHOP_TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  .formatToParts(d).filter(p => p.type !== 'literal').map(p => [p.type, p.value]));
+const localDay = (d = nowDate()) => { const p = shopParts(d); return `${p.year}-${p.month}-${p.day}`; };
+const shopHM = (d = nowDate()) => { const p = shopParts(d); return `${p.hour}:${p.minute}`; };
+// Calendar arithmetic on "YYYY-MM-DD" strings, done in UTC so no time zone can shift the date.
+const parseDay = s => { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d, 12)); };
+const ymd = d => d.toISOString().slice(0, 10);
+const addDays = (s, n) => { const d = parseDay(s); d.setUTCDate(d.getUTCDate() + n); return ymd(d); };
+const monthStart = (s, add = 0) => { const d = parseDay(s); return ymd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + add, 1, 12))); };
+const monthEnd = s => { const d = parseDay(s); return ymd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 12))); };
 const daysBetween = (from, to) => { const out = []; for (let d = from; d <= to; d = addDays(d, 1)) out.push(d); return out; };
-const longDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
-const shortDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
+const longDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+const shortDay = s => parseDay(s).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
 const money = c => (c < 0 ? '−' : '') + settings.currency + (Math.abs(c) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtQty = n => Number(n).toLocaleString('es-MX', { maximumFractionDigits: 3 });
 const parseNum = s => { const n = parseFloat(String(s ?? '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : NaN; };
 const parseMoney = s => { const n = parseNum(s); return isNaN(n) ? NaN : Math.round(n * 100); }; // money stored as integer cents
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isCash = m => /efectivo|cash|dinheiro|contado/i.test(m || '');
-const fmtDateTime = iso => new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+const fmtDateTime = iso => new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: SHOP_TZ });
+const fmtTime = iso => new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: SHOP_TZ });
+const fmtFull = iso => new Date(iso).toLocaleString('es-MX', { timeZone: SHOP_TZ });
 const clean = o => JSON.parse(JSON.stringify(o)); // Firestore rejects undefined values
 let toastTimer;
 function toast(msg, ms = 3200) {
@@ -635,7 +671,7 @@ function applyRoleUI() {
 
 // In-app confirm/prompt (the browser's own boxes are blocked in some views).
 // Resolves true/false, or the typed text / null when input: true.
-function ask({ title, text = '', input = false, value = '', ok = 'Aceptar', inputMode = 'decimal', cancel = true }) {
+function ask({ title, text = '', input = false, value = '', ok = 'Aceptar', inputMode = 'decimal', cancel = true, inputType = 'text' }) {
   return new Promise(resolve => {
     const d = $('#askDialog'), inp = $('#askInput');
     $('#askTitle').textContent = title;
@@ -643,6 +679,7 @@ function ask({ title, text = '', input = false, value = '', ok = 'Aceptar', inpu
     $('#askOk').textContent = ok;
     inp.classList.toggle('hidden', !input);
     inp.inputMode = inputMode;
+    inp.type = inputType;
     inp.setAttribute('autocapitalize', inputMode === 'text' ? 'characters' : 'off');
     $('#askCancel').classList.toggle('hidden', !cancel);
     inp.value = value;
@@ -698,7 +735,7 @@ const commit = (batch, what) => track(batch.commit(), what);
 
 // Stock changes go as increments, so sales from several phones at once all add up correctly.
 function stockChanges(batch, changes, type, saleId = null) {
-  const now = new Date().toISOString();
+  const now = nowIso();
   let n = 0;
   changes.forEach(({ itemId, delta }) => {
     const item = invById(itemId);
@@ -767,14 +804,17 @@ function sumStats(list) {
 
 /* ================= datos en vivo ================= */
 let liveUnsubs = [], profileUnsub = null;
-function stopLive() { liveUnsubs.forEach(u => u()); liveUnsubs = []; Object.keys(pendingBy).forEach(k => delete pendingBy[k]); }
+function stopLive() { liveUnsubs.forEach(u => u()); liveUnsubs = []; Object.keys(pendingBy).forEach(k => delete pendingBy[k]); Object.keys(serverReady).forEach(k => delete serverReady[k]); }
 function sub(key, target, onData) {
   liveUnsubs.push(ff.onSnapshot(target, { includeMetadataChanges: true }, snap => {
     pendingBy[key] = snap.metadata.hasPendingWrites;
+    if (!snap.metadata.fromCache) serverReady[key] = true;
     onData(snap);
     scheduleRender();
+    if (['stats', 'expenses', 'closures'].includes(key)) scheduleAutoClose();
   }, err => console.warn(key, err)));
 }
+const serverReady = {};
 // Recent data stays live on the phone (and in its offline cache); older days are fetched when someone looks at them.
 function startLive() {
   stopLive();
@@ -798,6 +838,7 @@ async function rangeDocs(name, from, to) {
 }
 // Keep the live window anchored to today if the app stays open past midnight.
 setInterval(() => {
+  if (me) scheduleAutoClose(); // also catches 11:50 pm
   if (!me || localDay() === liveDay) return;
   ['#salesDate', '#expDate', '#closeDate'].forEach(s => { if ($(s).value === liveDay) $(s).value = localDay(); });
   startLive();
@@ -834,6 +875,38 @@ function renderSync() {
 addEventListener('online', renderSync);
 addEventListener('offline', renderSync);
 
+/* ================= hora del servidor ================= */
+async function syncClock() {
+  if (!me || !navigator.onLine) return;
+  try {
+    const ref = dref('clock', me.uid);
+    const t0 = Date.now();
+    await withTimeout(ff.setDoc(ref, { t: ff.serverTimestamp() }), 10000);
+    const t1 = Date.now();
+    const snap = await withTimeout(ff.getDocFromServer(ref), 10000);
+    const server = snap.data().t.toMillis();
+    const dayBefore = localDay();
+    clockOffset = Math.round(server - (t0 + t1) / 2); // the server stamped it somewhere between t0 and t1
+    ls.set('clockOffset', clockOffset);
+    const dayNow = localDay();
+    if (dayNow !== dayBefore) { // the phone's own clock had us on the wrong day: move "today" everywhere
+      ['#salesDate', '#expDate', '#closeDate'].forEach(s => { if ($(s).value === dayBefore) $(s).value = dayNow; });
+      if (period.anchor === dayBefore) period.anchor = dayNow;
+      startLive();
+    }
+    renderClockWarning();
+    scheduleRender();
+  } catch (err) { console.warn('clock', err); }
+}
+function renderClockWarning() {
+  const mins = Math.round(Math.abs(clockOffset) / 60000);
+  const b = $('#clockBanner');
+  b.classList.toggle('hidden', mins < 2);
+  if (mins >= 2) b.textContent = `La hora de este teléfono está ${clockOffset > 0 ? 'atrasada' : 'adelantada'} ${mins >= 120 ? Math.round(mins / 60) + ' horas' : mins + ' minutos'}. La app usa la hora correcta de Guadalajara, pero conviene corregirla en los ajustes del teléfono.`;
+}
+addEventListener('online', () => syncClock());
+setInterval(() => syncClock(), 3600000);
+
 /* ================= inicio de sesión ================= */
 function showAuth(state, msg = '') {
   const s = $('#authScreen');
@@ -846,9 +919,11 @@ function showAuth(state, msg = '') {
   $('#authRetry').classList.toggle('hidden', state !== 'error');
 }
 const AUTH_ERRORS = {
-  'auth/invalid-credential': 'Correo o contraseña incorrectos.',
-  'auth/wrong-password': 'Correo o contraseña incorrectos.',
-  'auth/user-not-found': 'Correo o contraseña incorrectos.',
+  'auth/invalid-credential': 'Usuario o contraseña incorrectos.',
+  'auth/wrong-password': 'Usuario o contraseña incorrectos.',
+  'auth/user-not-found': 'Usuario o contraseña incorrectos.',
+  'auth/missing-password': 'Escribe la contraseña.',
+  'auth/requires-recent-login': 'Por seguridad, cierra sesión y vuelve a entrar antes de cambiar la contraseña.',
   'auth/invalid-email': 'Ese correo no es válido.',
   'auth/too-many-requests': 'Demasiados intentos. Espera unos minutos.',
   'auth/network-request-failed': 'Sin internet. La primera vez que entras en un teléfono necesitas conexión.',
@@ -857,24 +932,40 @@ const AUTH_ERRORS = {
   'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.'
 };
 const authError = err => AUTH_ERRORS[err?.code] || `Algo salió mal (${err?.code || err?.message || 'error'}).`;
+// "maria" → looks up logins/maria to find the account's email; anything with "@" is used as the email directly.
+// After an admin sets a new password, a real email is remapped too (logins/{email}).
+async function loginEmailFor(id) {
+  const key = normUser(id);
+  let snap = null;
+  try { snap = await withTimeout(ff.getDoc(dref('logins', key)), 10000); } catch (err) { if (!key.includes('@')) throw err; }
+  if (snap && snap.exists()) return snap.data().email;
+  return key.includes('@') ? key : null;
+}
 $('#loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   $('#loginBtn').disabled = true;
   $('#authMsg').textContent = 'Entrando…';
   try {
-    await fa.signInWithEmailAndPassword(auth, $('#loginEmail').value.trim(), $('#loginPass').value);
+    const email = await loginEmailFor($('#loginEmail').value.trim());
+    if (!email) { $('#authMsg').textContent = AUTH_ERRORS['auth/invalid-credential']; return; }
+    await fa.signInWithEmailAndPassword(auth, email, $('#loginPass').value);
     $('#loginPass').value = '';
   } catch (err) {
-    $('#authMsg').textContent = authError(err);
+    $('#authMsg').textContent = err?.code ? authError(err) : (navigator.onLine ? 'No se pudo entrar. Intenta otra vez.' : AUTH_ERRORS['auth/network-request-failed']);
   } finally { $('#loginBtn').disabled = false; }
 });
 $('#forgotPass').addEventListener('click', async () => {
-  const email = $('#loginEmail').value.trim();
-  if (!email) { $('#authMsg').textContent = 'Escribe tu correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".'; return; }
+  const id = $('#loginEmail').value.trim();
+  if (!id) { $('#authMsg').textContent = 'Escribe tu usuario o correo arriba y vuelve a tocar "¿Olvidaste tu contraseña?".'; return; }
   try {
+    const email = await loginEmailFor(id);
+    if (!email || isSynthetic(email)) {
+      $('#authMsg').textContent = 'Tu cuenta no tiene correo. Pide a un administrador que te asigne una contraseña nueva.';
+      return;
+    }
     await fa.sendPasswordResetEmail(auth, email);
-    $('#authMsg').textContent = `Si ${email} tiene cuenta, le llegará un correo para elegir una contraseña nueva.`;
-  } catch (err) { $('#authMsg').textContent = authError(err); }
+    $('#authMsg').textContent = 'Si la cuenta existe, llegará un correo para elegir una contraseña nueva. También puedes pedir a un administrador que te asigne una.';
+  } catch (err) { $('#authMsg').textContent = err?.code ? authError(err) : AUTH_ERRORS['auth/network-request-failed']; }
 });
 $('#authRetry').addEventListener('click', () => location.reload());
 $('#authSignOut').addEventListener('click', () => fa.signOut(auth));
@@ -894,13 +985,15 @@ function startApp() {
   applyRoleUI(); renderHeader();
   showAuth('hidden');
   startLive();
+  syncClock();
+  renderClockWarning();
   showTab('sell');
   if (lockEnabled()) openLock('unlock');
   checkLegacy();
 }
 function onUser(user) {
   resetSession();
-  if (!user) { showAuth('login', 'Entra con tu correo y contraseña.'); return; }
+  if (!user) { showAuth('login', 'Entra con tu usuario y contraseña.'); return; }
   showAuth('loading', 'Cargando tu cuenta…');
   const cached = ls.get('profile_' + user.uid);
   if (user.uid === SUPER_UID) {
@@ -909,16 +1002,17 @@ function onUser(user) {
   }
   profileUnsub = ff.onSnapshot(dref('users', user.uid), { includeMetadataChanges: true }, snap => {
     if (user.uid === SUPER_UID) {
-      if (snap.exists()) { me.name = snap.data().name || me.name; ls.set('profile_' + user.uid, { name: me.name, role: 'super' }); renderHeader(); }
-      else if (!snap.metadata.fromCache) ff.setDoc(dref('users', user.uid), { name: me.name, email: user.email, role: 'super', active: true, createdAt: new Date().toISOString() }).catch(() => {});
+      if (snap.exists()) { me.name = snap.data().name || me.name; me.username = snap.data().username || null; ls.set('profile_' + user.uid, { name: me.name, role: 'super' }); renderHeader(); }
+      else if (!snap.metadata.fromCache) ff.setDoc(dref('users', user.uid), { name: me.name, email: user.email, role: 'super', active: true, createdAt: nowIso() }).catch(() => {});
       return;
     }
     if (snap.exists()) {
       const d = snap.data();
+      if (d.replacedBy) return block('Tu contraseña cambió. Toca "Cerrar sesión" y entra con la nueva.');
       if (d.active === false) return block('Tu cuenta está desactivada. Pide acceso al administrador.');
       if (!ROLE_LABEL[d.role]) return block('Tu cuenta no tiene un rol válido. Pide ayuda al administrador.');
       const first = !me;
-      me = { uid: user.uid, email: user.email, name: d.name || user.email, role: d.role };
+      me = { uid: user.uid, email: user.email, name: d.name || d.username || user.email, role: d.role, username: d.username || null };
       ls.set('profile_' + user.uid, { name: me.name, role: me.role });
       if (first) startApp(); else scheduleRender();
     } else if (!snap.metadata.fromCache) {
@@ -1202,12 +1296,17 @@ dialog.addEventListener('click', e => {
   if (e.target.id === 'priceCancel' || e.target === dialog) dialog.close();
 });
 
+// While editing a past sale, items keep the price they were sold at, even if the menu changed since.
+let editing = null; // { sale, prices: Map(key → unitPrice), info: Map(key → original item) }
+const itemKey = i => `${i.productId}|${i.channel || 'tienda'}|${i.variantId || ''}`;
 const cartItems = () => [...cart].map(([key, qty]) => {
   const [id, channel, vid] = key.split('|');
-  const p = products.find(x => x.id === id);
-  if (!p) return null;
-  const v = variantOf(p, vid);
-  return { key, p, v, channel, qty, price: unitPrice(p, channel, v) };
+  const orig = editing?.info.get(key);
+  let p = products.find(x => x.id === id);
+  if (!p) { if (!orig) return null; p = { id, name: orig.name, price: orig.unitPrice, recipe: [], variants: [] }; }
+  const v = variantOf(p, vid) || (orig?.variant ? { id: vid, name: orig.variant, extra: 0, recipe: [] } : null);
+  const price = editing?.prices.has(key) ? editing.prices.get(key) : unitPrice(p, channel, v);
+  return { key, p, v, channel, qty, price };
 }).filter(Boolean);
 const cartTotal = () => cartItems().reduce((s, i) => s + i.price * i.qty, 0);
 function cartConsumption() {
@@ -1235,10 +1334,18 @@ function renderCart() {
   $('#cashBox').classList.toggle('hidden', !isCash(payment));
   updateChange();
   const n = items.reduce((t, i) => t + i.qty, 0);
-  $('#cartBar').classList.toggle('hidden', n === 0);
-  $('#cartBarCount').textContent = `${n} producto${n === 1 ? '' : 's'}`;
+  $('#cartBar').classList.toggle('hidden', n === 0 && !editing);
+  $('#cartBarCount').textContent = (editing ? 'Editando · ' : '') + `${n} producto${n === 1 ? '' : 's'}`;
+  $('#cartTitle').textContent = editing ? 'Editar venta' : 'Venta actual';
+  $('#completeSale').textContent = editing ? 'Guardar cambios' : 'Cobrar';
+  $('#clearCart').textContent = editing ? 'Cancelar' : 'Limpiar';
+  $('#editBanner').classList.toggle('hidden', !editing);
+  if (editing) {
+    const s = editing.sale, time = fmtTime(s.createdAt);
+    $('#editBanner').textContent = `Editando la venta de las ${time}${s.createdBy?.name ? ' de ' + s.createdBy.name : ''} (${money(s.total)}). Agrega o quita productos y toca "Guardar cambios".`;
+  }
   $('#cartBarTotal').textContent = money(cartTotal());
-  if (!n) closeCart();
+  if (!n && !editing) closeCart();
 }
 const openCart = () => document.body.classList.add('cart-open');
 const closeCart = () => document.body.classList.remove('cart-open');
@@ -1270,10 +1377,65 @@ $('#paymentButtons').addEventListener('click', e => {
   payment = b.dataset.pay;
   renderCart();
 });
-$('#clearCart').addEventListener('click', () => { cart.clear(); payment = null; $('#cashReceived').value = ''; renderCart(); });
+function endEdit() { editing = null; cart.clear(); payment = null; $('#cashReceived').value = ''; renderCart(); }
+$('#clearCart').addEventListener('click', () => {
+  const wasEditing = !!editing;
+  endEdit();
+  if (wasEditing) { toast('Edición cancelada.'); showTab('sales'); }
+});
+async function startEdit(sale) {
+  if (!requireAdmin()) return;
+  if (sale.voided) return toast('Reactiva la venta antes de editarla.');
+  if (!editing && cart.size && !(await ask({ title: 'Hay una venta en curso', text: 'Si editas otra venta, la venta actual se borra. ¿Continuar?', ok: 'Continuar' }))) return;
+  cart.clear();
+  editing = { sale, prices: new Map(), info: new Map() };
+  sale.items.forEach(i => {
+    const k = itemKey(i);
+    cart.set(k, (cart.get(k) || 0) + i.qty);
+    editing.prices.set(k, i.unitPrice); editing.info.set(k, i);
+  });
+  payment = sale.paymentMethod; $('#cashReceived').value = '';
+  showTab('sell');
+  renderCart(); openCart();
+}
+// Difference between two versions of a sale, as increments on the day's totals.
+function statsDelta(oldSale, newSale) {
+  const a = statsFromSale(oldSale), b = statsFromSale(newSale), inc = ff.increment;
+  const diffMap = (x, y) => Object.fromEntries([...new Set([...Object.keys(x), ...Object.keys(y)])]
+    .map(k => [k, (y[k] || 0) - (x[k] || 0)]).filter(([, d]) => d).map(([k, d]) => [k, inc(d)]));
+  const byProduct = {};
+  new Set([...Object.keys(a.byProduct), ...Object.keys(b.byProduct)]).forEach(k => {
+    const o = a.byProduct[k] || { qty: 0, amount: 0 }, n = b.byProduct[k] || { qty: 0, amount: 0 };
+    if (n.qty !== o.qty || n.amount !== o.amount) byProduct[k] = { name: (b.byProduct[k] || a.byProduct[k]).name, qty: inc(n.qty - o.qty), amount: inc(n.amount - o.amount) };
+  });
+  return { day: oldSale.day, total: inc(b.total - a.total), byMethod: diffMap(a.byMethod, b.byMethod), byChannel: diffMap(a.byChannel, b.byChannel), byProduct };
+}
+function saveEdit(items, total, cashReceived, change) {
+  const old = editing.sale, now = nowIso();
+  const consumption = cartConsumption();
+  const updated = {
+    items: items.map(({ p, v, channel, qty, price }) => ({ productId: p.id, name: p.name, variantId: v ? v.id : null, variant: v ? v.name : null, channel, unitPrice: price, qty })),
+    total, paymentMethod: payment, cashReceived, change, consumption, editedBy: byMe(), editedAt: now,
+    edits: [...(old.edits || []), { at: now, by: byMe(), total: old.total, paymentMethod: old.paymentMethod, items: old.items }]
+  };
+  const newSale = { ...old, ...updated };
+  const b1 = ff.writeBatch(fs);
+  b1.update(dref('sales', old.id), clean(updated));
+  b1.set(dref('dailyStats', old.day), statsDelta(old, newSale), { merge: true });
+  commit(b1, 'guardar los cambios de la venta');
+  // Inventory: give back what the old version used, take what the new one uses (only the difference is written).
+  const was = new Map((old.consumption || []).map(c => [c.itemId, c.qty])), now2 = new Map(consumption.map(c => [c.itemId, c.qty]));
+  const deltas = [...new Set([...was.keys(), ...now2.keys()])].map(itemId => ({ itemId, delta: round3((was.get(itemId) || 0) - (now2.get(itemId) || 0)) }));
+  const b2 = ff.writeBatch(fs);
+  if (stockChanges(b2, deltas, 'edición', old.id)) commit(b2, 'ajustar el inventario');
+  const diff = total - old.total;
+  endEdit();
+  toast(diff ? `Venta actualizada: ${money(old.total)} → ${money(total)}.` : 'Venta actualizada.', 5000);
+  showTab('sales');
+}
 $('#completeSale').addEventListener('click', () => {
   const items = cartItems();
-  if (!items.length) return toast('Agrega al menos un producto.');
+  if (!items.length) return toast(editing ? 'Una venta no puede quedar vacía. Para quitarla completa, usa "Anular" en Ventas.' : 'Agrega al menos un producto.', 5000);
   if (!payment) return toast('Elige la forma de pago.');
   const total = cartTotal();
   let cashReceived = null, change = null;
@@ -1284,7 +1446,8 @@ $('#completeSale').addEventListener('click', () => {
       cashReceived = r; change = r - total;
     }
   }
-  const now = new Date();
+  if (editing) return saveEdit(items, total, cashReceived, change);
+  const now = nowDate();
   const consumption = cartConsumption();
   const sale = {
     id: uid(), createdAt: now.toISOString(), day: localDay(now),
@@ -1332,17 +1495,25 @@ async function renderSales() {
      <div class="stat"><div class="k">Delivery</div><div class="v">${money(byChannel.delivery)}</div></div>` +
     Object.entries(byMethod).map(([m, v]) => `<div class="stat"><div class="k">${esc(m)}</div><div class="v">${money(v)}</div></div>`).join('');
   $('#salesList').innerHTML = sales.length ? sales.map(s => {
-    const time = new Date(s.createdAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-    const who = s.createdBy?.name ? ` · ${esc(s.createdBy.name)}` : '';
-    const voidInfo = s.voided ? ` · ANULADA${s.voidedBy?.name ? ' por ' + esc(s.voidedBy.name) : ''}` : '';
-    return `<li class="${s.voided ? 'voided' : ''}"><div>
-      <div><strong class="amt">${money(s.total)}</strong> · ${esc(s.paymentMethod)}${voidInfo}</div>
-      <div class="meta">${time}${who} — ${esc(s.items.map(i => `${i.qty}× ${i.name}${i.variant ? ` (${i.variant})` : ''}${i.channel === 'delivery' ? ' · delivery' : ''}`).join(', '))}</div></div>
-      <button class="danger need-admin" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></li>`;
+    const time = fmtTime(s.createdAt);
+    const pills = (s.voided ? `<span class="pill agotado">Anulada${s.voidedBy?.name ? ' · ' + esc(s.voidedBy.name) : ''}</span>` : '')
+      + (s.editedBy ? ` <span class="pill bajo">Editada · ${esc(s.editedBy.name)}</span>` : '');
+    const rows = s.items.map(i => `<tr><td class="q">${i.qty}×</td>
+        <td>${esc(i.name)}${i.variant ? ` <span class="meta">· ${esc(i.variant)}</span>` : ''}${i.channel === 'delivery' ? ' <span class="chan">Delivery</span>' : ''}</td>
+        <td class="money">${money(i.unitPrice * i.qty)}</td></tr>`).join('');
+    return `<li class="sale ${s.voided ? 'voided' : ''}">
+      <div class="sale-head"><span><strong>${time}</strong>${s.createdBy?.name ? ' · ' + esc(s.createdBy.name) : ''} · ${esc(s.paymentMethod)}</span><span>${pills}</span></div>
+      <div class="table-wrap"><table class="sale-items">${rows}</table></div>
+      <div class="sale-total"><span>Total</span><strong class="amt">${money(s.total)}</strong></div>
+      <div class="row sale-actions need-admin">
+        ${s.voided ? '' : `<button class="secondary" data-edit-sale="${s.id}">Editar</button>`}
+        <button class="danger" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></div></li>`;
   }).join('') : '<li class="empty">No hay ventas este día.</li>';
 }
 $('#salesDate').addEventListener('change', renderSales);
 $('#salesList').addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit-sale]');
+  if (ed) { const s = salesShown.get(ed.dataset.editSale); if (s) startEdit(s); return; }
   const b = e.target.closest('[data-void]');
   if (!b || !requireAdmin()) return;
   const sale = salesShown.get(b.dataset.void);
@@ -1350,7 +1521,7 @@ $('#salesList').addEventListener('click', async e => {
   const toVoid = !sale.voided;
   if (toVoid && !(await ask({ title: '¿Anular esta venta?', text: 'Ya no contará en los totales y los insumos regresan al inventario.', ok: 'Anular' }))) return;
   const b1 = ff.writeBatch(fs);
-  b1.update(dref('sales', sale.id), { voided: toVoid, voidedBy: toVoid ? byMe() : null, voidedAt: toVoid ? new Date().toISOString() : null });
+  b1.update(dref('sales', sale.id), { voided: toVoid, voidedBy: toVoid ? byMe() : null, voidedAt: toVoid ? nowIso() : null });
   b1.set(dref('dailyStats', sale.day), statsPayload(sale, toVoid ? -1 : 1), { merge: true });
   commit(b1, toVoid ? 'anular la venta' : 'reactivar la venta');
   const b2 = ff.writeBatch(fs);
@@ -1565,7 +1736,7 @@ $('#itemForm').addEventListener('submit', e => {
   } else {
     const stock = parseNum($('#itemStock').value || '0');
     if (isNaN(stock)) return toast('La existencia debe ser un número.');
-    const item = { id: uid(), name, unit, stock: round3(stock), lowAt, createdAt: new Date().toISOString() };
+    const item = { id: uid(), name, unit, stock: round3(stock), lowAt, createdAt: nowIso() };
     const b = ff.writeBatch(fs);
     b.set(dref('inventory', item.id), item);
     if (stock) b.set(dref('movements', uid()), { createdAt: item.createdAt, itemId: item.id, itemName: name, unit, delta: round3(stock), stockAfter: round3(stock), type: 'alta', saleId: null, by: byMe() });
@@ -1654,7 +1825,7 @@ $('#expForm').addEventListener('submit', e => {
   if (!concept) return toast('Escribe el concepto.');
   if (isNaN(amount) || amount <= 0) return toast('Escribe un monto válido, ej. 250');
   const exp = {
-    id: uid(), day: $('#expDate').value || localDay(), createdAt: new Date().toISOString(),
+    id: uid(), day: $('#expDate').value || localDay(), createdAt: nowIso(),
     concept, category: $('#expCategory').value.trim(), amount, paidFrom: $('#expPaidFrom').value, createdBy: byMe()
   };
   track(ff.setDoc(dref('expenses', exp.id), exp), 'guardar el gasto');
@@ -1690,6 +1861,54 @@ async function dayCash(day) {
   return { cashSales, cashExpenses, other };
 }
 const toInput = c => (c == null ? '' : (c / 100).toFixed(2));
+
+/* ----- cierre automático -----
+   No server runs in the background, so any phone with the app open does it: at 11:50 pm (shop time) for today,
+   and on opening the app for any earlier day that had activity and was never closed. Automatic closes have no
+   cash count; they assume the expected cash stayed in the register, so the next day's starting cash chains on.
+   They update themselves if late sales sync in, and are replaced as soon as someone closes the day by hand. */
+const AUTO_CLOSE_AT = '23:50';
+const AUTO_BY = { uid: 'auto', name: 'Automático' };
+function cashFromLive(day) {
+  const S = sumStats(live.stats.filter(s => s.day === day));
+  let cashSales = 0;
+  Object.entries(S.byMethod).forEach(([m, v]) => { if (isCash(m)) cashSales += v; });
+  const cashExpenses = live.expenses.filter(e => e.day === day && e.paidFrom === 'caja').reduce((t, e) => t + e.amount, 0);
+  return { cashSales, cashExpenses, active: S.tickets > 0 || S.total !== 0 || live.expenses.some(e => e.day === day) };
+}
+let autoCloseTimer = null, autoClosing = false;
+function scheduleAutoClose() { clearTimeout(autoCloseTimer); autoCloseTimer = setTimeout(autoClose, 3000); }
+async function autoClose() {
+  // Only with fresh server data and nothing of ours still uploading, so it never closes on a partial picture.
+  if (autoClosing || !me || !navigator.onLine || anyPending() || !['stats', 'expenses', 'closures'].every(k => serverReady[k])) return;
+  autoClosing = true;
+  try {
+    const today = localDay(), lastDay = shopHM() >= AUTO_CLOSE_AT ? today : addDays(today, -1);
+    const candidates = new Set([...live.stats.map(s => s.day), ...live.expenses.map(e => e.day), ...live.closures.filter(c => c.auto).map(c => c.day)]);
+    const days = [...candidates].filter(d => d <= lastDay && d >= liveFrom).sort();
+    if (!days.length) return;
+    const closures = new Map(live.closures.map(c => [c.day, c]));
+    let prev = await previousClosure(days[0]);
+    const b = ff.writeBatch(fs);
+    let n = 0;
+    for (const day of days) {
+      const existing = closures.get(day);
+      if (existing && !existing.auto) { prev = existing; continue; } // closed by a person: never touched
+      const { cashSales, cashExpenses, active } = cashFromLive(day);
+      if (!active && !existing) continue;
+      const openingCash = prev ? prev.leftInRegister : 0;
+      const expected = openingCash + cashSales - cashExpenses;
+      const doc = { day, auto: true, closedAt: existing?.closedAt || nowIso(), openingCash, cashSales, cashExpenses, expected,
+        counted: null, difference: null, withdrawn: 0, leftInRegister: expected, notes: 'Cierre automático (sin conteo de efectivo)', closedBy: AUTO_BY };
+      if (!existing || existing.openingCash !== openingCash || existing.cashSales !== cashSales || existing.cashExpenses !== cashExpenses) {
+        b.set(dref('closures', day), doc); n++;
+      }
+      prev = doc;
+      // Days closed by hand after this one keep their own starting cash; the chain only flows through automatic ones.
+    }
+    if (n) commit(b, 'cerrar días automáticamente');
+  } finally { autoClosing = false; }
+}
 // force = also reset the form fields (tab opened, date changed, saved). Live updates only refresh the numbers,
 // unless the day's closure changed on another phone and nobody is typing here.
 async function renderClose(force) {
@@ -1706,10 +1925,10 @@ async function renderClose(force) {
     if (token !== closeToken) return;
     $('#closeOpening').value = toInput(closure ? closure.openingCash : prev ? prev.leftInRegister : 0);
     $('#closeCounted').value = toInput(closure?.counted);
-    $('#closeWithdrawn').value = closure ? toInput(closure.withdrawn) : '';
-    $('#closeNotes').value = closure?.notes || '';
+    $('#closeWithdrawn').value = closure && !closure.auto ? toInput(closure.withdrawn) : '';
+    $('#closeNotes').value = closure && !closure.auto ? closure.notes || '' : '';
   }
-  $('#closeSave').textContent = closure ? 'Actualizar cierre' : 'Cerrar día';
+  $('#closeSave').textContent = !closure ? 'Cerrar día' : closure.auto ? 'Cerrar con conteo' : 'Actualizar cierre';
   const otherTxt = Object.entries(cash.other).map(([m, v]) => `${m} ${money(v)}`).join(' · ');
   $('#closeOther').textContent = otherTxt ? `Cobros que no entran a la caja: ${otherTxt}.` : '';
   updateCloseCalc();
@@ -1736,12 +1955,17 @@ function updateCloseCalc() {
   }
   const c = closeCtx.closure;
   let status = '';
-  if (c) {
+  if (c && c.auto) {
+    status = `<p><span class="pill bajo">Cierre automático</span> <span class="meta">${fmtDateTime(c.closedAt)} · sin conteo de efectivo</span></p>
+      <p class="hint">Se calculó solo, suponiendo que quedaron ${money(c.leftInRegister)} en caja. Si cuentas el efectivo, escríbelo y toca "Cerrar con conteo".</p>`;
+  } else if (c) {
     status = `<p><span class="pill ok">Cerrado</span> <span class="meta">${fmtDateTime(c.closedAt)}${c.closedBy?.name ? ' · ' + esc(c.closedBy.name) : ''}</span></p>`;
     if (c.cashSales !== closeCtx.cashSales || c.cashExpenses !== closeCtx.cashExpenses)
       status += '<div class="warn-box">Hubo ventas, anulaciones o gastos después del cierre. Revisa el conteo y toca "Actualizar cierre".</div>';
   } else if (closeCtx.day < localDay()) {
-    status = '<div class="warn-box">Este día no se cerró.</div>';
+    status = '<div class="warn-box">Este día no se cerró. Se cerrará automáticamente cuando un teléfono abra la app con internet.</div>';
+  } else {
+    status = `<p class="hint">Si nadie cierra el día, la app lo cierra sola a las ${AUTO_CLOSE_AT === '23:50' ? '11:50 pm' : AUTO_CLOSE_AT} (hora de Guadalajara).</p>`;
   }
   if (anyPending()) status += '<div class="warn-box">Este teléfono tiene cambios que todavía no se suben. Conéctate a internet para que todo cuente.</div>';
   $('#closeStatus').innerHTML = status;
@@ -1764,9 +1988,9 @@ $('#closeSave').addEventListener('click', async () => {
     if (!(await ask({ title: 'La caja no cuadra', text: `${txt} ¿Guardar el cierre así?`, ok: 'Guardar' }))) return;
   }
   const closure = {
-    day: closeCtx.day, closedAt: new Date().toISOString(), openingCash: opening,
+    day: closeCtx.day, closedAt: nowIso(), openingCash: opening,
     cashSales: closeCtx.cashSales, cashExpenses: closeCtx.cashExpenses, expected, counted, difference,
-    withdrawn, leftInRegister: counted - withdrawn, notes: $('#closeNotes').value.trim(), closedBy: byMe()
+    withdrawn, leftInRegister: counted - withdrawn, notes: $('#closeNotes').value.trim(), closedBy: byMe(), auto: false
   };
   track(ff.setDoc(dref('closures', closure.day), closure), 'guardar el cierre');
   toast(`Día cerrado. Quedan ${money(counted - withdrawn)} en caja.`);
@@ -1778,19 +2002,18 @@ const period = { kind: 'day', anchor: localDay() };
 function periodRange() {
   const a = period.anchor;
   if (period.kind === 'day') return [a, a];
-  if (period.kind === 'week') { const start = addDays(a, -((parseDay(a).getDay() + 6) % 7)); return [start, addDays(start, 6)]; } // lunes a domingo
-  const d = parseDay(a);
-  return [localDay(new Date(d.getFullYear(), d.getMonth(), 1)), localDay(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+  if (period.kind === 'week') { const start = addDays(a, -((parseDay(a).getUTCDay() + 6) % 7)); return [start, addDays(start, 6)]; } // lunes a domingo
+  return [monthStart(a), monthEnd(a)];
 }
 function periodLabel(from, to) {
   if (period.kind === 'day') return longDay(from);
   if (period.kind === 'week') return `${shortDay(from)} – ${shortDay(to)}`;
-  return parseDay(from).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+  return parseDay(from).toLocaleDateString('es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 function shiftPeriod(dir) {
   if (period.kind === 'day') period.anchor = addDays(period.anchor, dir);
   else if (period.kind === 'week') period.anchor = addDays(period.anchor, 7 * dir);
-  else { const d = parseDay(period.anchor); period.anchor = localDay(new Date(d.getFullYear(), d.getMonth() + dir, 1)); }
+  else period.anchor = monthStart(period.anchor, dir);
   renderSummary();
 }
 $('#periodPrev').addEventListener('click', () => shiftPeriod(-1));
@@ -1817,14 +2040,15 @@ async function renderSummary() {
   const S = sumStats(stats);
   const spent = exps.reduce((t, e) => t + e.amount, 0), byCat = {};
   exps.forEach(e => { const c = e.category || 'Sin categoría'; byCat[c] = (byCat[c] || 0) + e.amount; });
-  const diffTotal = clos.reduce((t, c) => t + c.difference, 0);
+  const counted = clos.filter(c => c.difference != null);
+  const diffTotal = counted.reduce((t, c) => t + c.difference, 0);
   let html = `<div class="summary">
     <div class="stat"><div class="k">Ventas</div><div class="v">${money(S.total)}</div></div>
     <div class="stat"><div class="k">Gastos</div><div class="v">${money(spent)}</div></div>
     <div class="stat"><div class="k">Ventas − gastos</div><div class="v">${money(S.total - spent)}</div></div>
     <div class="stat"><div class="k">Tickets</div><div class="v">${S.tickets}</div></div>
     <div class="stat"><div class="k">Ticket promedio</div><div class="v">${money(S.tickets ? Math.round(S.total / S.tickets) : 0)}</div></div>
-    <div class="stat"><div class="k">Diferencias de caja</div><div class="v">${clos.length ? (diffTotal > 0 ? '+' : '') + money(diffTotal) : '—'}</div></div>
+    <div class="stat"><div class="k">Diferencias de caja</div><div class="v">${counted.length ? (diffTotal > 0 ? '+' : '') + money(diffTotal) : '—'}</div></div>
   </div>`;
   if (period.kind !== 'day') {
     const closMap = Object.fromEntries(clos.map(c => [c.day, c]));
@@ -1833,15 +2057,16 @@ async function renderSummary() {
       const sv = statMap[d]?.total || 0;
       const ex = exps.filter(e => e.day === d).reduce((t, e) => t + e.amount, 0);
       const c = closMap[d];
-      const cierre = c ? (c.difference === 0 ? 'Cuadra' : (c.difference > 0 ? '+' : '') + money(c.difference)) : (sv ? 'Sin cerrar' : '—');
+      const cierre = c ? (c.auto ? 'Automático' : c.difference === 0 ? 'Cuadra' : (c.difference > 0 ? '+' : '') + money(c.difference)) : (sv ? 'Sin cerrar' : '—');
       return [esc(shortDay(d)), money(sv), money(ex), money(sv - ex), cierre];
     });
     html += breakdownTable('Por día', rows, ['Día', 'Ventas', 'Gastos', 'Neto', 'Caja']);
   }
   html += breakdownTable('Formas de pago', Object.entries(S.byMethod).filter(([, v]) => v).sort((a, b) => b[1] - a[1]).map(([m, v]) => [esc(m), money(v)]), ['Forma', 'Total']);
   html += breakdownTable('Canal', [['En tienda', money(S.byChannel.tienda || 0)], ['Delivery', money(S.byChannel.delivery || 0)]], ['Canal', 'Total']);
-  html += breakdownTable('Más vendidos', [...S.byProduct.values()].filter(v => v.qty > 0).sort((a, b) => b.qty - a.qty || b.amount - a.amount).slice(0, 10)
-    .map(v => [esc(v.name), v.qty, money(v.amount)]), ['Producto', 'Cant.', 'Total']);
+  const sold = [...S.byProduct.values()].filter(v => v.qty > 0).sort((a, b) => b.qty - a.qty || b.amount - a.amount);
+  html += breakdownTable('Productos vendidos', sold.length ? [...sold.map(v => [esc(v.name), v.qty, money(v.amount)]),
+    ['<strong>Total</strong>', `<strong>${sold.reduce((t, v) => t + v.qty, 0)}</strong>`, `<strong>${money(sold.reduce((t, v) => t + v.amount, 0))}</strong>`]] : [], ['Producto', 'Cant.', 'Total']);
   html += breakdownTable('Gastos por categoría', Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => [esc(c), money(v)]), ['Categoría', 'Total']);
   if (!S.tickets && !exps.length) html += '<p class="empty">No hay ventas ni gastos en este periodo.</p>';
   $('#summaryBody').innerHTML = html;
@@ -1862,8 +2087,8 @@ async function buildExport() {
   mov.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const stamp = localDay();
   const slug = settings.shopName.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'negocio';
-  const json = JSON.stringify({ app: APP_ID, format: 4, exportedAt: new Date().toISOString(), settings, products: p, inventory: inv, movements: mov, sales: s, expenses: exp, closures: clo });
-  const hm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+  const json = JSON.stringify({ app: APP_ID, format: 4, exportedAt: nowIso(), settings, products: p, inventory: inv, movements: mov, sales: s, expenses: exp, closures: clo });
+  const hm = iso => shopHM(new Date(iso));
   const sales = [['venta_id', 'fecha', 'hora', 'producto', 'variante', 'canal', 'cantidad', 'precio_unitario', 'importe', 'total_venta', 'forma_pago', 'anulada', 'vendio']];
   s.forEach(sale => sale.items.forEach(i => sales.push([
     sale.id, sale.day, hm(sale.createdAt), i.name, i.variant || '', CHANNEL_LABEL[i.channel || 'tienda'], i.qty, (i.unitPrice / 100).toFixed(2), (i.unitPrice * i.qty / 100).toFixed(2),
@@ -1876,8 +2101,8 @@ async function buildExport() {
   const c2 = v => (v == null ? '' : (v / 100).toFixed(2));
   const expRows = [['fecha', 'concepto', 'categoria', 'monto', 'pagado_con', 'usuario']];
   exp.forEach(e => expRows.push([e.day, e.concept, e.category, c2(e.amount), e.paidFrom === 'caja' ? 'Caja' : 'Otro', e.createdBy?.name || '']));
-  const cloRows = [['fecha', 'fondo_inicial', 'ventas_efectivo', 'gastos_caja', 'esperado', 'contado', 'diferencia', 'retiro', 'queda_en_caja', 'notas', 'cerro']];
-  clo.forEach(c => cloRows.push([c.day, c2(c.openingCash), c2(c.cashSales), c2(c.cashExpenses), c2(c.expected), c2(c.counted), c2(c.difference), c2(c.withdrawn), c2(c.leftInRegister), c.notes || '', c.closedBy?.name || '']));
+  const cloRows = [['fecha', 'tipo', 'fondo_inicial', 'ventas_efectivo', 'gastos_caja', 'esperado', 'contado', 'diferencia', 'retiro', 'queda_en_caja', 'notas', 'cerro']];
+  clo.forEach(c => cloRows.push([c.day, c.auto ? 'automatico' : 'manual', c2(c.openingCash), c2(c.cashSales), c2(c.cashExpenses), c2(c.expected), c2(c.counted), c2(c.difference), c2(c.withdrawn), c2(c.leftInRegister), c.notes || '', c.closedBy?.name || '']));
   // Full backup is JSON saved as .txt: Chrome on Android won't share .json files, but .txt is allowed.
   return [
     new File([json], `${slug}-respaldo-${stamp}.txt`, { type: 'text/plain' }),
@@ -1896,13 +2121,13 @@ function downloadFiles(files) {
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }, i * 400));
 }
-function markBackedUp() { ls.set('lastBackup', new Date().toISOString()); renderBackupInfo(); checkBackupReminder(); }
+function markBackedUp() { ls.set('lastBackup', nowIso()); renderBackupInfo(); checkBackupReminder(); }
 $('#shareBackup').addEventListener('click', async () => {
   toast('Preparando respaldo…');
   const files = await buildExport();
   if (navigator.canShare && navigator.canShare({ files })) {
     try {
-      await navigator.share({ files, title: `Respaldo ${settings.shopName}`, text: `Respaldo de ${settings.shopName} — ${new Date().toLocaleString('es-MX')}` });
+      await navigator.share({ files, title: `Respaldo ${settings.shopName}`, text: `Respaldo de ${settings.shopName} — ${fmtFull(nowIso())}` });
       markBackedUp();
       toast('Respaldo compartido.');
     } catch (err) {
@@ -1922,10 +2147,10 @@ $('#downloadBackup').addEventListener('click', async () => {
 });
 function renderBackupInfo() {
   const last = ls.get('lastBackup');
-  $('#lastBackupText').textContent = last ? `Último respaldo desde este teléfono: ${new Date(last).toLocaleString('es-MX')}` : 'Todavía no se ha enviado ningún respaldo desde este teléfono.';
+  $('#lastBackupText').textContent = last ? `Último respaldo desde este teléfono: ${fmtFull(last)}` : 'Todavía no se ha enviado ningún respaldo desde este teléfono.';
 }
 function checkBackupReminder() {
-  if (!ls.get('firstUse')) ls.set('firstUse', new Date().toISOString());
+  if (!ls.get('firstUse')) ls.set('firstUse', nowIso());
   const last = ls.get('lastBackup');
   const days = Math.floor((Date.now() - new Date(last || ls.get('firstUse'))) / 864e5);
   const due = canAdmin() && days >= reminderDays();
@@ -1974,7 +2199,7 @@ $('#restoreFile').addEventListener('change', async e => {
   let data;
   try { data = JSON.parse(await file.text()); } catch { return toast('Ese archivo no es un respaldo válido.'); }
   if (!data || data.app !== APP_ID || !Array.isArray(data.products) || !Array.isArray(data.sales)) return toast('Ese archivo no es un respaldo válido.');
-  const when = data.exportedAt ? new Date(data.exportedAt).toLocaleString('es-MX') : 'fecha desconocida';
+  const when = data.exportedAt ? fmtFull(data.exportedAt) : 'fecha desconocida';
   if (!(await ask({ title: '¿Subir este respaldo a la nube?', text: `Respaldo del ${when}: ${data.products.length} productos, ${(data.inventory || []).length} insumos y ${data.sales.length} ventas. Se agregan o actualizan; no se borra nada. Las existencias de inventario quedan como en el respaldo.`, ok: 'Subir' }))) return;
   try { await importData(data, msg => toast(msg, 60000)); toast('Respaldo subido.'); }
   catch (err) { toast(errText(err, 'subir el respaldo'), 8000); }
@@ -2020,28 +2245,50 @@ $('#legacyUpload').addEventListener('click', async () => {
 });
 
 /* ================= usuarios (super usuario) ================= */
+function secondaryAuth() {
+  // A second Firebase instance creates accounts, so the super user stays signed in here.
+  if (!secAuth) secAuth = fa.initializeAuth(fapp.initializeApp(FIREBASE_CONFIG, 'alta-usuarios'), { persistence: fa.inMemoryPersistence });
+  return secAuth;
+}
+async function createAccount(email, password) {
+  const cred = await fa.createUserWithEmailAndPassword(secondaryAuth(), email, password);
+  await fa.signOut(secondaryAuth());
+  return cred.user.uid;
+}
+async function usernameTaken(username) {
+  const snap = await withTimeout(ff.getDoc(dref('logins', username)), 10000);
+  return snap.exists();
+}
 function renderUsers() {
-  if (!isSuperUser()) return;
-  const list = [...live.users].sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+  if (!canAdmin()) return;
+  const list = live.users.filter(u => !u.replacedBy).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
   $('#userList').innerHTML = list.length ? list.map(u => {
+    // Nobody but the super user touches the super user's account; you can't change your own role or deactivate yourself.
     const self = u.id === me.uid || u.id === SUPER_UID;
+    if (u.id === SUPER_UID && !isSuperUser()) return `<li class="user-row"><div class="item-main"><strong>${esc(u.name || '')}</strong> <span class="pill ok">${esc(ROLE_LABEL.super)}</span></div></li>`;
     const status = u.active === false ? '<span class="pill agotado">Desactivado</span>' : `<span class="pill ok">${esc(ROLE_LABEL[u.role] || u.role)}</span>`;
-    return `<li class="user-row"><div class="item-main"><strong>${esc(u.name || '')}</strong> ${status}<div class="meta">${esc(u.email || '')}</div></div>
-      ${self ? '' : `<div class="row">
+    const realEmail = u.email && !isSynthetic(u.email) ? u.email : '';
+    const who = [u.username ? `Usuario: ${esc(u.username)}` : 'Sin usuario (entra con correo)', esc(realEmail)].filter(Boolean).join(' · ');
+    const userBtn = u.username ? '' : `<button class="secondary" data-setuser="${u.id}">Asignar usuario</button>`;
+    const passBtn = `<button class="secondary" data-newpass="${u.id}">Nueva contraseña</button>`
+      + (realEmail ? `<button class="secondary" data-reset="${esc(realEmail)}">Enviar correo de contraseña</button>` : '');
+    return `<li class="user-row"><div class="item-main"><strong>${esc(u.name || '')}</strong> ${status}<div class="meta">${who}</div></div>
+      ${self ? (userBtn ? `<div class="row">${userBtn}</div>` : '') : `<div class="row">
         <select data-role="${u.id}" aria-label="Rol"><option value="regular"${u.role === 'regular' ? ' selected' : ''}>Cajero</option><option value="admin"${u.role === 'admin' ? ' selected' : ''}>Administrador</option></select>
-        <button class="secondary" data-reset="${esc(u.email || '')}">Cambiar contraseña</button>
+        ${userBtn}${passBtn}
         <button class="danger" data-active="${u.id}">${u.active === false ? 'Activar' : 'Desactivar'}</button></div>`}</li>`;
   }).join('') : '<li class="empty">Todavía no hay usuarios.</li>';
 }
 $('#userList').addEventListener('change', e => {
   const s = e.target.closest('[data-role]');
-  if (!s || !isSuperUser()) return;
+  if (!s || !canAdmin()) return;
   track(ff.updateDoc(dref('users', s.dataset.role), { role: s.value }), 'cambiar el rol');
   toast('Rol actualizado.');
 });
 $('#userList').addEventListener('click', async e => {
   const r = e.target.closest('[data-reset]'), a = e.target.closest('[data-active]');
-  if (!isSuperUser()) return;
+  const su = e.target.closest('[data-setuser]'), np = e.target.closest('[data-newpass]');
+  if (!canAdmin()) return;
   if (r) {
     try { await fa.sendPasswordResetEmail(auth, r.dataset.reset); toast(`Se envió un correo a ${r.dataset.reset} para elegir contraseña nueva.`, 5000); }
     catch (err) { toast(authError(err), 6000); }
@@ -2052,21 +2299,62 @@ $('#userList').addEventListener('click', async e => {
     if (!activate && !(await ask({ title: `¿Desactivar a ${u.name}?`, text: 'Ya no podrá ver ni registrar nada. Sus ventas anteriores se conservan.', ok: 'Desactivar' }))) return;
     track(ff.updateDoc(dref('users', u.id), { active: activate }), activate ? 'activar al usuario' : 'desactivar al usuario');
   }
+  if (su) { // give an existing email account a username too
+    const u = live.users.find(x => x.id === su.dataset.setuser);
+    const raw = await ask({ title: `Usuario para ${u.name}`, text: 'Solo minúsculas, números, punto, guion o guion bajo (3 a 30). Podrá entrar con este usuario o con su correo.', input: true, inputMode: 'text', ok: 'Guardar' });
+    if (raw === null) return;
+    const username = normUser(raw);
+    if (!USERNAME_RE.test(username)) return toast('Ese usuario no es válido. Ej.: maria, juan.perez');
+    try {
+      if (await usernameTaken(username)) return toast('Ese usuario ya existe. Elige otro.');
+      const b = ff.writeBatch(fs);
+      b.set(dref('logins', username), { email: u.authEmail || u.email || (u.id === me.uid ? me.email : ''), uid: u.id });
+      b.update(dref('users', u.id), { username });
+      await withTimeout(b.commit(), 20000);
+      if (u.id === me.uid) me.username = username;
+      toast(`Listo: ${u.name} puede entrar como "${username}".`, 5000);
+    } catch (err) { toast(errText(err, 'asignar el usuario'), 7000); }
+  }
+  if (np) { // username-only accounts: replace the login with a new one, same username and role
+    const u = live.users.find(x => x.id === np.dataset.newpass);
+    if (u.id === SUPER_UID) return;
+    if (!u.username) return toast(`Primero toca "Asignar usuario" para ${u.name}.`, 5000);
+    const pass = await ask({ title: `Nueva contraseña para ${u.name}`, text: 'Mínimo 6 caracteres. Seguirá entrando con el mismo usuario (y correo, si tiene) y el mismo rol; sus ventas se conservan.', input: true, inputMode: 'text', ok: 'Guardar' });
+    if (pass === null) return;
+    if (pass.length < 6) return toast(AUTH_ERRORS['auth/weak-password']);
+    if (!navigator.onLine) return toast('Se necesita internet para cambiar contraseñas.');
+    try {
+      const authEmail = `${u.username}.${Date.now().toString(36)}@${LOGIN_DOMAIN}`;
+      const newUid = await createAccount(authEmail, pass);
+      const { id, replacedBy, ...profile } = u;
+      const b = ff.writeBatch(fs);
+      b.set(dref('users', newUid), clean({ ...profile, authEmail, active: true, replaces: u.id, passwordSetAt: nowIso() }));
+      b.update(dref('users', u.id), { active: false, replacedBy: newUid });
+      b.set(dref('logins', u.username), { email: authEmail, uid: newUid });
+      if (u.email && !isSynthetic(u.email)) b.set(dref('logins', u.email), { email: authEmail, uid: newUid });
+      await withTimeout(b.commit(), 20000);
+      toast(`Contraseña nueva lista para ${u.name}. Si tenía la sesión abierta, tendrá que volver a entrar.`, 6000);
+    } catch (err) { toast(err?.code ? authError(err) : errText(err, 'cambiar la contraseña'), 7000); }
+  }
 });
 $('#userForm').addEventListener('submit', async e => {
   e.preventDefault();
-  if (!isSuperUser()) return;
-  const name = $('#uName').value.trim(), email = $('#uEmail').value.trim().toLowerCase(), password = $('#uPass').value, role = $('#uRole').value;
+  if (!canAdmin()) return;
+  const name = $('#uName').value.trim(), username = normUser($('#uUser').value);
+  const email = $('#uEmail').value.trim().toLowerCase(), password = $('#uPass').value, role = $('#uRole').value;
+  if (!USERNAME_RE.test(username)) return toast('El usuario lleva 3 a 30 caracteres: minúsculas, números, punto, guion o guion bajo.', 6000);
   if (!navigator.onLine) return toast('Se necesita internet para crear usuarios.');
   $('#uSave').disabled = true;
   try {
-    // A second Firebase instance creates the account, so the super user stays signed in here.
-    if (!secAuth) secAuth = fa.initializeAuth(fapp.initializeApp(FIREBASE_CONFIG, 'alta-usuarios'), { persistence: fa.inMemoryPersistence });
-    const cred = await fa.createUserWithEmailAndPassword(secAuth, email, password);
-    await fa.signOut(secAuth);
-    await withTimeout(ff.setDoc(dref('users', cred.user.uid), { name, email, role, active: true, createdAt: new Date().toISOString(), createdBy: byMe() }), 20000);
+    if (await usernameTaken(username)) return toast('Ese usuario ya existe. Elige otro.');
+    const authEmail = email || `${username}@${LOGIN_DOMAIN}`;
+    const uid = await createAccount(authEmail, password);
+    const b = ff.writeBatch(fs);
+    b.set(dref('users', uid), { name, username, email: email || null, authEmail, role, active: true, createdAt: nowIso(), createdBy: byMe() });
+    b.set(dref('logins', username), { email: authEmail, uid });
+    await withTimeout(b.commit(), 20000);
     $('#userForm').reset();
-    toast(`Usuario creado: ${name} (${ROLE_LABEL[role]}).`, 5000);
+    toast(`Usuario creado: ${name} entra como "${username}" (${ROLE_LABEL[role]}).`, 6000);
   } catch (err) {
     toast(err?.code ? authError(err) : errText(err, 'crear el usuario'), 7000);
   } finally { $('#uSave').disabled = false; }
@@ -2075,16 +2363,27 @@ $('#userForm').addEventListener('submit', async e => {
 /* ================= mi cuenta y ajustes ================= */
 function renderAccount() {
   if (!me) return;
-  $('#accountInfo').innerHTML = `<strong>${esc(me.name)}</strong> · ${esc(ROLE_LABEL[me.role])}<br><span class="meta">${esc(me.email)}</span>`;
+  const ids = [me.username ? `Usuario: ${me.username}` : '', isSynthetic(me.email) ? '' : me.email].filter(Boolean).join(' · ');
+  $('#accountInfo').innerHTML = `<strong>${esc(me.name)}</strong> · ${esc(ROLE_LABEL[me.role])}<br><span class="meta">${esc(ids)}</span>`;
 }
 $('#myPassword').addEventListener('click', async () => {
-  try { await fa.sendPasswordResetEmail(auth, me.email); toast(`Te enviamos un correo a ${me.email} para elegir una contraseña nueva.`, 5000); }
-  catch (err) { toast(authError(err), 6000); }
+  const cur = await ask({ title: 'Cambiar mi contraseña', text: 'Escribe tu contraseña actual.', input: true, inputType: 'password', inputMode: 'text', ok: 'Siguiente' });
+  if (cur === null) return;
+  const next = await ask({ title: 'Cambiar mi contraseña', text: 'Escribe la contraseña nueva (mínimo 6 caracteres).', input: true, inputType: 'password', inputMode: 'text', ok: 'Cambiar' });
+  if (next === null) return;
+  if (next.length < 6) return toast(AUTH_ERRORS['auth/weak-password']);
+  if (!navigator.onLine) return toast('Se necesita internet para cambiar la contraseña.');
+  try {
+    const u = auth.currentUser;
+    await fa.reauthenticateWithCredential(u, fa.EmailAuthProvider.credential(u.email, cur));
+    await fa.updatePassword(u, next);
+    toast('Contraseña cambiada.');
+  } catch (err) { toast(err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' ? 'La contraseña actual no es correcta.' : authError(err), 6000); }
 });
 $('#signOutBtn').addEventListener('click', async () => {
   const text = anyPending()
     ? 'Este teléfono tiene cambios que todavía no se suben. Si cierras sesión sin internet, podrían perderse. Conéctate primero.'
-    : 'Para volver a entrar necesitarás tu correo y contraseña (y conexión a internet).';
+    : 'Para volver a entrar necesitarás tu usuario y contraseña (y conexión a internet).';
   if (!(await ask({ title: '¿Cerrar sesión?', text, ok: 'Cerrar sesión' }))) return;
   fa.signOut(auth);
 });
