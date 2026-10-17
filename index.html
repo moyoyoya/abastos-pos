@@ -212,6 +212,14 @@ body:not(.can-super) .need-super{display:none!important}
 .sale-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--rule);padding-top:6px;font-family:var(--display);font-size:18px;text-transform:uppercase}
 .sale-actions{margin-top:10px}
 .edit-banner{margin:4px 0 8px;padding:8px 10px;border-radius:6px;background:var(--low-bg);color:var(--low-ink);font-size:14px}
+.sale-history{margin-top:8px;font-size:14px}
+.sale-history summary{cursor:pointer;color:var(--accent);font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;min-height:36px;display:flex;align-items:center}
+.sale-history ol{margin:4px 0 0;padding-left:20px;display:grid;gap:6px}
+.sale-history .chg{color:var(--muted)}
+.list .sale-history li{display:list-item;border:0;background:none;padding:0;margin:0;border-radius:0}
+.sale-history li::marker{color:var(--accent)}
+.more-opts{margin:8px 0}
+.more-opts summary{cursor:pointer;color:var(--accent);font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-size:14px;min-height:40px;display:flex;align-items:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;max-width:90vw;z-index:10}
 </style>
 </head>
@@ -453,17 +461,20 @@ body:not(.can-super) .need-super{display:none!important}
       <p class="hint">Administradores y el super usuario pueden crear cuentas, cambiar roles, asignar contraseñas nuevas y desactivar.</p>
       <ul id="userList" class="list"></ul>
       <form id="userForm">
-        <h3 class="sub-h">Nuevo usuario</h3>
-        <label>Nombre<input id="uName" required placeholder="Ej.: María"></label>
-        <label>Usuario para entrar<input id="uUser" required autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="Ej.: maria"></label>
-        <label>Correo (opcional, sirve para recuperar la contraseña)<input id="uEmail" type="email" autocomplete="off"></label>
-        <label>Contraseña temporal (mínimo 6 caracteres)<input id="uPass" type="text" required minlength="6" autocomplete="off"></label>
+        <h3 class="sub-h">Nuevo usuario (dar de alta a otra persona)</h3>
+        <label>Usuario<input id="uUser" required autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off" placeholder="Ej.: maria"></label>
+        <label>Contraseña (mínimo 6 caracteres)<input id="uPass" type="text" required minlength="6" autocomplete="off"></label>
         <label>Rol
           <select id="uRole">
             <option value="regular">Cajero: vende, registra entradas, gastos y cierre</option>
             <option value="admin">Administrador: además anula ventas y edita productos e inventario</option>
           </select>
         </label>
+        <details class="more-opts">
+          <summary>Más opciones (no es obligatorio)</summary>
+          <label>Nombre que aparece en ventas<input id="uName" placeholder="Si lo dejas vacío: el usuario con mayúscula"></label>
+          <label>Correo (sirve para recuperar la contraseña sola)<input id="uEmail" type="email" autocomplete="off"></label>
+        </details>
         <button class="primary" type="submit" id="uSave">Crear usuario</button>
         <p class="hint">Necesita internet. Dale a la persona su usuario y contraseña; después puede cambiarla en Mi cuenta. El usuario lleva solo minúsculas, números, punto, guion o guion bajo.</p>
       </form>
@@ -1474,6 +1485,34 @@ $('#completeSale').addEventListener('click', () => {
 });
 
 /* ================= ventas ================= */
+// Each edit keeps the version it replaced, so the full chain is: original → change 1 → change 2 … → current.
+const itemLabel = i => `${i.name}${i.variant ? ' · ' + i.variant : ''}${i.channel === 'delivery' ? ' (delivery)' : ''}`;
+function diffItems(before, after) {
+  const qty = list => { const m = new Map(); list.forEach(i => m.set(itemLabel(i), (m.get(itemLabel(i)) || 0) + i.qty)); return m; };
+  const a = qty(before), b = qty(after), out = [];
+  new Set([...a.keys(), ...b.keys()]).forEach(k => {
+    const d = (b.get(k) || 0) - (a.get(k) || 0);
+    if (d) out.push(`${d > 0 ? '+' : '−'} ${Math.abs(d)}× ${k}`);
+  });
+  return out;
+}
+function saleHistoryHtml(s) {
+  const edits = s.edits || [];
+  if (!edits.length) return '';
+  const when = iso => (localDay(new Date(iso)) === s.day ? fmtTime(iso) : fmtDateTime(iso));
+  const versions = [...edits.map(e => ({ items: e.items, total: e.total, paymentMethod: e.paymentMethod })), s];
+  const steps = edits.map((e, i) => {
+    const before = versions[i], after = versions[i + 1];
+    const changes = diffItems(before.items || [], after.items || []);
+    if (before.paymentMethod !== after.paymentMethod) changes.push(`${esc(before.paymentMethod)} → ${esc(after.paymentMethod)}`);
+    const totalTxt = before.total !== after.total ? `${money(before.total)} → ${money(after.total)}` : 'mismo total';
+    return `<li><strong>Cambio ${i + 1}</strong> · ${when(e.at)} · ${esc(e.by?.name || '?')}<br><span class="chg">${totalTxt}${changes.length ? ' · ' + changes.map(esc).join(' · ') : ''}</span></li>`;
+  }).join('');
+  const orig = versions[0];
+  return `<details class="sale-history"><summary>Historial · ${edits.length} cambio${edits.length === 1 ? '' : 's'}</summary><ol>
+    <li><strong>Venta original</strong> · ${fmtTime(s.createdAt)} · ${esc(s.createdBy?.name || '?')}<br><span class="chg">${money(orig.total)} · ${esc(orig.paymentMethod)} · ${esc((orig.items || []).map(i => `${i.qty}× ${itemLabel(i)}`).join(', '))}</span></li>
+    ${steps}</ol></details>`;
+}
 let salesShown = new Map(), salesToken = 0;
 async function renderSales() {
   const token = ++salesToken;
@@ -1497,7 +1536,7 @@ async function renderSales() {
   $('#salesList').innerHTML = sales.length ? sales.map(s => {
     const time = fmtTime(s.createdAt);
     const pills = (s.voided ? `<span class="pill agotado">Anulada${s.voidedBy?.name ? ' · ' + esc(s.voidedBy.name) : ''}</span>` : '')
-      + (s.editedBy ? ` <span class="pill bajo">Editada · ${esc(s.editedBy.name)}</span>` : '');
+      + (s.editedBy ? ` <span class="pill bajo">Editada${(s.edits || []).length > 1 ? ` ${s.edits.length} veces` : ''}</span>` : '');
     const rows = s.items.map(i => `<tr><td class="q">${i.qty}×</td>
         <td>${esc(i.name)}${i.variant ? ` <span class="meta">· ${esc(i.variant)}</span>` : ''}${i.channel === 'delivery' ? ' <span class="chan">Delivery</span>' : ''}</td>
         <td class="money">${money(i.unitPrice * i.qty)}</td></tr>`).join('');
@@ -1505,6 +1544,7 @@ async function renderSales() {
       <div class="sale-head"><span><strong>${time}</strong>${s.createdBy?.name ? ' · ' + esc(s.createdBy.name) : ''} · ${esc(s.paymentMethod)}</span><span>${pills}</span></div>
       <div class="table-wrap"><table class="sale-items">${rows}</table></div>
       <div class="sale-total"><span>Total</span><strong class="amt">${money(s.total)}</strong></div>
+      ${saleHistoryHtml(s)}
       <div class="row sale-actions need-admin">
         ${s.voided ? '' : `<button class="secondary" data-edit-sale="${s.id}">Editar</button>`}
         <button class="danger" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></div></li>`;
@@ -2250,14 +2290,33 @@ function secondaryAuth() {
   if (!secAuth) secAuth = fa.initializeAuth(fapp.initializeApp(FIREBASE_CONFIG, 'alta-usuarios'), { persistence: fa.inMemoryPersistence });
   return secAuth;
 }
+// Creating a user is two steps (login, then profile). If an earlier attempt created the login but the profile
+// was rejected, the login is left half-made: recover it when the password matches and it has no profile yet.
 async function createAccount(email, password) {
-  const cred = await fa.createUserWithEmailAndPassword(secondaryAuth(), email, password);
+  let cred;
+  try {
+    cred = await fa.createUserWithEmailAndPassword(secondaryAuth(), email, password);
+  } catch (err) {
+    if (err?.code !== 'auth/email-already-in-use') throw err;
+    try { cred = await fa.signInWithEmailAndPassword(secondaryAuth(), email, password); }
+    catch { throw Object.assign(new Error('half'), { code: 'app/half-created' }); }
+    const profile = await withTimeout(ff.getDoc(dref('users', cred.user.uid)), 10000).catch(() => null);
+    if (profile && profile.exists()) { await fa.signOut(secondaryAuth()); throw err; }
+  }
   await fa.signOut(secondaryAuth());
   return cred.user.uid;
 }
+function userSaveError(err, what) {
+  if (err?.code === 'permission-denied') return `Firebase no dejó ${what}. Revisa que las reglas más recientes (firestore.rules) estén publicadas en Firebase → Firestore → Reglas.`;
+  if (err?.code === 'app/half-created') return 'Ese usuario quedó a medias en un intento anterior. Vuelve a crearlo con la misma contraseña que usaste esa vez, o usa otro nombre de usuario.';
+  return err?.code?.startsWith('auth/') ? authError(err) : errText(err, what);
+}
+// Returns null if the username is free, or a short description of who already uses it.
 async function usernameTaken(username) {
   const snap = await withTimeout(ff.getDoc(dref('logins', username)), 10000);
-  return snap.exists();
+  if (!snap.exists()) return null;
+  const owner = live.users.find(u => u.id === snap.data().uid);
+  return owner ? `Ese usuario ya lo usa ${owner.name}. Elige otro, o cámbiale el usuario a ${owner.name} con "Cambiar usuario".` : 'Ese usuario ya existe. Elige otro.';
 }
 function renderUsers() {
   if (!canAdmin()) return;
@@ -2269,7 +2328,7 @@ function renderUsers() {
     const status = u.active === false ? '<span class="pill agotado">Desactivado</span>' : `<span class="pill ok">${esc(ROLE_LABEL[u.role] || u.role)}</span>`;
     const realEmail = u.email && !isSynthetic(u.email) ? u.email : '';
     const who = [u.username ? `Usuario: ${esc(u.username)}` : 'Sin usuario (entra con correo)', esc(realEmail)].filter(Boolean).join(' · ');
-    const userBtn = u.username ? '' : `<button class="secondary" data-setuser="${u.id}">Asignar usuario</button>`;
+    const userBtn = `<button class="secondary" data-setuser="${u.id}">${u.username ? 'Cambiar usuario' : 'Ponerle usuario'}</button>`;
     const passBtn = `<button class="secondary" data-newpass="${u.id}">Nueva contraseña</button>`
       + (realEmail ? `<button class="secondary" data-reset="${esc(realEmail)}">Enviar correo de contraseña</button>` : '');
     return `<li class="user-row"><div class="item-main"><strong>${esc(u.name || '')}</strong> ${status}<div class="meta">${who}</div></div>
@@ -2299,21 +2358,33 @@ $('#userList').addEventListener('click', async e => {
     if (!activate && !(await ask({ title: `¿Desactivar a ${u.name}?`, text: 'Ya no podrá ver ni registrar nada. Sus ventas anteriores se conservan.', ok: 'Desactivar' }))) return;
     track(ff.updateDoc(dref('users', u.id), { active: activate }), activate ? 'activar al usuario' : 'desactivar al usuario');
   }
-  if (su) { // give an existing email account a username too
+  if (su) { // set or change the username THIS person signs in with (does not create anyone)
     const u = live.users.find(x => x.id === su.dataset.setuser);
-    const raw = await ask({ title: `Usuario para ${u.name}`, text: 'Solo minúsculas, números, punto, guion o guion bajo (3 a 30). Podrá entrar con este usuario o con su correo.', input: true, inputMode: 'text', ok: 'Guardar' });
+    const self = u.id === me.uid;
+    const raw = await ask({
+      title: u.username ? `Cambiar el usuario de ${u.name}` : `Ponerle usuario a ${u.name}`,
+      text: `Esto NO crea una cuenta nueva: es el nombre con el que ${self ? 'tú entras' : u.name + ' entra'} a la app${u.username ? ` (ahora "${u.username}")` : ''}. Para dar de alta a otra persona usa "Nuevo usuario", más abajo. Solo minúsculas, números, punto, guion o guion bajo.`,
+      input: true, inputMode: 'text', value: u.username || '', ok: 'Guardar'
+    });
     if (raw === null) return;
     const username = normUser(raw);
+    if (username === u.username) return;
     if (!USERNAME_RE.test(username)) return toast('Ese usuario no es válido. Ej.: maria, juan.perez');
     try {
-      if (await usernameTaken(username)) return toast('Ese usuario ya existe. Elige otro.');
+      const taken = await usernameTaken(username);
+      if (taken) return toast(taken, 8000);
       const b = ff.writeBatch(fs);
-      b.set(dref('logins', username), { email: u.authEmail || u.email || (u.id === me.uid ? me.email : ''), uid: u.id });
+      const loginEmail = u.authEmail || u.email || (self ? me.email : '');
+      b.set(dref('logins', username), { email: loginEmail, uid: u.id });
+      if (u.username) { // free the old name, only if it still points to this person
+        const old = await withTimeout(ff.getDoc(dref('logins', u.username)), 10000);
+        if (old.exists() && old.data().uid === u.id) b.delete(dref('logins', u.username));
+      }
       b.update(dref('users', u.id), { username });
       await withTimeout(b.commit(), 20000);
-      if (u.id === me.uid) me.username = username;
-      toast(`Listo: ${u.name} puede entrar como "${username}".`, 5000);
-    } catch (err) { toast(errText(err, 'asignar el usuario'), 7000); }
+      if (self) me.username = username;
+      toast(u.username ? `Listo: ${u.name} ahora entra como "${username}". "${u.username}" quedó libre.` : `Listo: ${u.name} puede entrar como "${username}".`, 6000);
+    } catch (err) { toast(userSaveError(err, 'cambiar el usuario'), 9000); }
   }
   if (np) { // username-only accounts: replace the login with a new one, same username and role
     const u = live.users.find(x => x.id === np.dataset.newpass);
@@ -2334,19 +2405,21 @@ $('#userList').addEventListener('click', async e => {
       if (u.email && !isSynthetic(u.email)) b.set(dref('logins', u.email), { email: authEmail, uid: newUid });
       await withTimeout(b.commit(), 20000);
       toast(`Contraseña nueva lista para ${u.name}. Si tenía la sesión abierta, tendrá que volver a entrar.`, 6000);
-    } catch (err) { toast(err?.code ? authError(err) : errText(err, 'cambiar la contraseña'), 7000); }
+    } catch (err) { toast(userSaveError(err, 'cambiar la contraseña'), 9000); }
   }
 });
 $('#userForm').addEventListener('submit', async e => {
   e.preventDefault();
   if (!canAdmin()) return;
-  const name = $('#uName').value.trim(), username = normUser($('#uUser').value);
+  const username = normUser($('#uUser').value);
+  const name = $('#uName').value.trim() || (username.charAt(0).toUpperCase() + username.slice(1));
   const email = $('#uEmail').value.trim().toLowerCase(), password = $('#uPass').value, role = $('#uRole').value;
   if (!USERNAME_RE.test(username)) return toast('El usuario lleva 3 a 30 caracteres: minúsculas, números, punto, guion o guion bajo.', 6000);
   if (!navigator.onLine) return toast('Se necesita internet para crear usuarios.');
   $('#uSave').disabled = true;
   try {
-    if (await usernameTaken(username)) return toast('Ese usuario ya existe. Elige otro.');
+    const taken = await usernameTaken(username);
+    if (taken) return toast(taken, 8000);
     const authEmail = email || `${username}@${LOGIN_DOMAIN}`;
     const uid = await createAccount(authEmail, password);
     const b = ff.writeBatch(fs);
@@ -2356,7 +2429,7 @@ $('#userForm').addEventListener('submit', async e => {
     $('#userForm').reset();
     toast(`Usuario creado: ${name} entra como "${username}" (${ROLE_LABEL[role]}).`, 6000);
   } catch (err) {
-    toast(err?.code ? authError(err) : errText(err, 'crear el usuario'), 7000);
+    toast(userSaveError(err, 'guardar el usuario'), 9000);
   } finally { $('#uSave').disabled = false; }
 });
 

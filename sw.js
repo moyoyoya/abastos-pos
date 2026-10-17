@@ -1,6 +1,6 @@
 // Offline support: serve app files from cache, refresh them in the background when online.
 // Code updates arrive automatically; the data (IndexedDB) is never touched by this file.
-const CACHE = 'abastos-pos-v12';
+const CACHE = 'abastos-pos-v16';
 const FONT_CACHE = 'abastos-libs-v1'; // fonts and the Firebase SDK (versioned URLs, never change)
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './logo.png', './icon-192.png', './icon-512.png'];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com', 'www.gstatic.com'];

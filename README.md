@@ -33,7 +33,7 @@ Enforced twice: the app hides what a role can't do, and `firestore.rules` reject
 Deactivating a user (Usuarios → Desactivar) locks them out at once; their past sales stay.
 
 ## Logins
-- Sign in with a **username** or an email. Email is optional when creating a user.
+- Sign in with a **username** or an email. Creating a user only needs username, password and role; display name (defaults to the username capitalized) and email are optional.
 - Username-only accounts use an internal address `username@abastosbrew-gdl.firebaseapp.com` (no mail is sent there).
   `logins/{username}` maps the username to that account; it can be read before signing in but reveals nothing without the password.
 - Everyone can change their own password in Mi cuenta. Admins can set a new one for anyone except the super user
@@ -57,7 +57,7 @@ Deactivating a user (Usuarios → Desactivar) locks them out at once; their past
 
 ## Editing a sale
 Admins: Ventas → Editar loads the sale into the cart. Add/remove items or change payment, then "Guardar cambios".
-Day totals and inventory are adjusted by the difference; the previous version is kept in the sale's `edits` history.
+Day totals and inventory are adjusted by the difference. Every edit keeps the version it replaced (`edits`), and the sale shows a "Historial": original order (time, seller) and each change with time, who, and what changed.
 
 ## Offline behaviour
 - First sign-in on each phone needs internet. After that the app opens and sells offline.
@@ -66,7 +66,7 @@ Day totals and inventory are adjusted by the difference; the previous version is
 
 ## Publishing an update
 1. Upload the changed files to the repo (GitHub Pages redeploys in about a minute).
-2. Bump `CACHE = 'abastos-pos-v12'` in `sw.js` to the next number.
+2. Bump `CACHE = 'abastos-pos-v16'` in `sw.js` to the next number.
 3. Phones pick up the new version the next times they open the app with internet.
 
 ## Backups
