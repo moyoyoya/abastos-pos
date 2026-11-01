@@ -17,8 +17,7 @@ sales keep working without signal and upload when it returns. Several phones can
 5. Upload `index.html`, `sw.js`, `manifest.webmanifest`, `logo.png`, `icon-192.png`, `icon-512.png` to the GitHub repo.
 6. Open the app, sign in as super user, then: Más → Respaldo y ajustes → **Usuarios** → create the other accounts.
    Create users from the app, not from the console (the app also saves their role).
-7. Products: Productos → "Cargar menú" (the printed menu, 29 items), or on the phone that used the old version:
-   sign in as admin → Más → Respaldo y ajustes → **Subir a la nube** (one time only).
+7. Products: on an empty shop, Productos → "Restaurar menú base" loads the printed menu (29 items).
 
 ## Roles
 | | Super | Admin | Cajero |
@@ -42,7 +41,7 @@ Deactivating a user (Usuarios → Desactivar) locks them out at once; their past
 ## Data model (Firestore)
 `products`, `inventory` (stock changed only by increments, so concurrent sales add up), `movements`,
 `sales` (each with `createdBy`), `dailyStats/{day}` (running totals for fast summaries), `expenses`,
-`closures/{day}`, `settings/main`, `users/{uid}`.
+`closures/{day}`, `settings/main`, `settings/menuBase`, `users/{uid}`.
 
 ## Time
 - Everything uses Guadalajara time (`America/Mexico_City`), whatever the phone's own time zone.
@@ -57,7 +56,23 @@ Deactivating a user (Usuarios → Desactivar) locks them out at once; their past
 
 ## Editing a sale
 Admins: Ventas → Editar loads the sale into the cart. Add/remove items or change payment, then "Guardar cambios".
-Day totals and inventory are adjusted by the difference. Every edit keeps the version it replaced (`edits`), and the sale shows a "Historial": original order (time, seller) and each change with time, who, and what changed.
+Day totals and inventory are adjusted by the difference. Every edit keeps the version it replaced (`edits`), and "Ver cambios" (or tapping the "Editada" label) opens a popup: original order (time, seller) and each change with time, who, and what changed.
+
+## Menu base
+- `settings/menuBase` holds the shop's default menu (products, prices, flavours, supplies used).
+- The first time an admin opens v19 online, the menu they have at that moment is saved as the base automatically.
+- Productos → **Guardar como menú base** (admins) updates it after menu changes. **Restaurar menú base** puts back
+  products that were deleted or changed since; products added later are left alone. It always asks first.
+- The printed menu in the code (`MENU`) is only used when the shop has no products at all.
+
+## Selling
+Payment defaults to Efectivo (tap another method if needed); "efectivo recibido" isn't asked. A sale is: products → Cobrar.
+
+## Receipt printer (per phone)
+- Generic 58 mm Bluetooth thermal printers (ESC/POS). Más → Respaldo y ajustes → Impresora de tickets → Conectar impresora.
+- Each sale prints 2 copies (COPIA CLIENTE, COPIA NEGOCIO) when "Imprimir al cobrar" is on. Ventas → Imprimir reprints.
+- Uses Web Bluetooth: works in Chrome on Android. Browsers on iPhone don't support it; use the free "Bluefy" app there.
+- A print failure never blocks or loses a sale.
 
 ## Offline behaviour
 - First sign-in on each phone needs internet. After that the app opens and sells offline.
@@ -66,7 +81,7 @@ Day totals and inventory are adjusted by the difference. Every edit keeps the ve
 
 ## Publishing an update
 1. Upload the changed files to the repo (GitHub Pages redeploys in about a minute).
-2. Bump `CACHE = 'abastos-pos-v16'` in `sw.js` to the next number.
+2. Bump `CACHE = 'abastos-pos-v19'` in `sw.js` to the next number.
 3. Phones pick up the new version the next times they open the app with internet.
 
 ## Backups

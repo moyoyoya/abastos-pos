@@ -212,12 +212,12 @@ body:not(.can-super) .need-super{display:none!important}
 .sale-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px solid var(--rule);padding-top:6px;font-family:var(--display);font-size:18px;text-transform:uppercase}
 .sale-actions{margin-top:10px}
 .edit-banner{margin:4px 0 8px;padding:8px 10px;border-radius:6px;background:var(--low-bg);color:var(--low-ink);font-size:14px}
-.sale-history{margin-top:8px;font-size:14px}
-.sale-history summary{cursor:pointer;color:var(--accent);font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;min-height:36px;display:flex;align-items:center}
-.sale-history ol{margin:4px 0 0;padding-left:20px;display:grid;gap:6px}
-.sale-history .chg{color:var(--muted)}
-.list .sale-history li{display:list-item;border:0;background:none;padding:0;margin:0;border-radius:0}
-.sale-history li::marker{color:var(--accent)}
+.history-list{margin:8px 0 0;padding-left:22px;display:grid;gap:12px;font-size:15px}
+.history-list .chg{color:var(--muted);font-size:14px}
+.history-list li::marker{color:var(--accent);font-family:var(--display)}
+.pill-btn{border:0;cursor:pointer;min-height:0;font-family:var(--display)}
+.check{display:flex;align-items:center;gap:10px;text-transform:none;letter-spacing:0;font-size:16px;color:var(--ink)}
+.check input{width:24px;min-height:24px;height:24px;margin:0;flex:none}
 .more-opts{margin:8px 0}
 .more-opts summary{cursor:pointer;color:var(--accent);font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-size:14px;min-height:40px;display:flex;align-items:center}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:12px 18px;border-radius:8px;max-width:90vw;z-index:10}
@@ -302,7 +302,7 @@ body:not(.can-super) .need-super{display:none!important}
         <div class="total-row"><span>Total</span><strong id="cartTotal"></strong></div>
         <div class="hint">Forma de pago</div>
         <div id="paymentButtons" class="seg"></div>
-        <div id="cashBox" class="hidden">
+        <div id="cashBox" class="hidden" hidden>
           <label>Efectivo recibido<input id="cashReceived" type="text" inputmode="decimal"></label>
           <div class="change">Cambio: <strong id="changeDue">—</strong></div>
         </div>
@@ -326,9 +326,12 @@ body:not(.can-super) .need-super{display:none!important}
   <!-- PRODUCTOS -->
   <section id="tab-products" class="tab hidden">
     <div id="seedBox" class="card need-admin">
-      <h2>Menú de Abastos Brew</h2>
+      <h2>Menú base</h2>
       <p class="hint" id="seedText"></p>
-      <button type="button" class="primary" id="seedBtn">Cargar menú</button>
+      <div class="row">
+        <button type="button" class="secondary" id="baseSaveBtn">Guardar como menú base</button>
+        <button type="button" class="primary" id="seedBtn">Restaurar menú base</button>
+      </div>
     </div>
     <p class="hint" id="productsReadOnly">Solo un administrador puede crear o editar productos.</p>
     <form id="productForm" class="card need-admin">
@@ -494,6 +497,17 @@ body:not(.can-super) .need-super{display:none!important}
       <input type="file" id="restoreFile" accept=".txt,.json,text/plain,application/json">
     </div>
     <div class="card">
+      <h2>Impresora de tickets</h2>
+      <p id="printerStatus"></p>
+      <p class="hint">Impresoras térmicas Bluetooth de 58 mm. Se conecta una vez en cada teléfono. Cada venta imprime 2 copias: cliente y negocio. En iPhone, Safari y Chrome no tienen Bluetooth: abre la app en "Bluefy".</p>
+      <label class="check"><input type="checkbox" id="printAuto"> Imprimir al cobrar</label>
+      <div class="row">
+        <button type="button" class="primary" id="printerConnect">Conectar impresora</button>
+        <button type="button" class="secondary" id="printerTest">Imprimir prueba</button>
+        <button type="button" class="danger" id="printerForget">Olvidar impresora</button>
+      </div>
+    </div>
+    <div class="card">
       <h2>Seguridad</h2>
       <p id="pinStatus"></p>
       <p class="hint">El PIN bloquea la app en este teléfono. Se pide al abrirla y después de unos minutos sin usarla.</p>
@@ -540,6 +554,13 @@ body:not(.can-super) .need-super{display:none!important}
     <button type="button" class="secondary hidden" id="priceBack">Atrás</button>
     <button type="button" class="secondary" id="priceCancel">Cancelar</button>
   </div>
+</dialog>
+
+<dialog id="historyDialog">
+  <h2>Cambios de la venta</h2>
+  <p id="historyIntro" class="hint"></p>
+  <ol id="historyList" class="history-list"></ol>
+  <div class="dialog-actions"><button type="button" class="primary" id="historyClose">Cerrar</button></div>
 </dialog>
 
 <script>
@@ -593,6 +614,7 @@ const cart = new Map(); // "productId|channel|variantId" -> qty
 let me = null; // { uid, email, name, role }
 const live = { users: [], sales: [], expenses: [], closures: [], stats: [], movements: [] };
 let salesFrom = '', liveFrom = '', liveDay = '', productsFromServer = false;
+let menuBase = null, menuBaseSaving = false; // settings/menuBase: the menu "Restaurar menú base" goes back to
 
 /* ================= almacenamiento local (solo preferencias de este teléfono) ================= */
 const ls = {
@@ -634,6 +656,8 @@ const parseNum = s => { const n = parseFloat(String(s ?? '').replace(/\s/g, '').
 const parseMoney = s => { const n = parseNum(s); return isNaN(n) ? NaN : Math.round(n * 100); }; // money stored as integer cents
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const isCash = m => /efectivo|cash|dinheiro|contado/i.test(m || '');
+// Most sales are cash: it comes pre-selected; another method is one tap away.
+const defaultPayment = () => settings.paymentMethods.find(isCash) || settings.paymentMethods[0] || null;
 const fmtDateTime = iso => new Date(iso).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: SHOP_TZ });
 const fmtTime = iso => new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: SHOP_TZ });
 const fmtFull = iso => new Date(iso).toLocaleString('es-MX', { timeZone: SHOP_TZ });
@@ -834,6 +858,7 @@ function startLive() {
   sub('products', col('products'), snap => { products = docsOf(snap); if (!snap.metadata.fromCache) productsFromServer = true; });
   sub('inventory', col('inventory'), snap => { inventory = docsOf(snap); });
   sub('settings', dref('settings', 'main'), snap => { settings = { ...DEFAULT_SETTINGS, ...(snap.exists() ? snap.data() : {}) }; });
+  sub('menuBase', dref('settings', 'menuBase'), snap => { menuBase = snap.exists() ? snap.data() : null; });
   sub('users', col('users'), snap => { live.users = docsOf(snap); });
   sub('sales', since('sales', salesFrom), snap => { live.sales = docsOf(snap); });
   sub('expenses', since('expenses', liveFrom), snap => { live.expenses = docsOf(snap); });
@@ -860,14 +885,14 @@ function scheduleRender() { clearTimeout(renderTimer); renderTimer = setTimeout(
 const currentTab = () => (document.querySelector('.tab:not(.hidden)')?.id || 'tab-sell').replace('tab-', '');
 function renderLive() {
   if (!me) return;
-  applyRoleUI(); renderHeader(); renderSync(); renderProductGrid(); renderCart(); checkBackupReminder();
+  applyRoleUI(); renderHeader(); renderSync(); renderProductGrid(); renderCart(); checkBackupReminder(); autoSaveMenuBase();
   const t = currentTab();
   if (t === 'products') renderProductList();
   if (t === 'sales') renderSales();
   if (t === 'inventory') renderInventory();
   if (t === 'expenses') renderExpenses();
   if (t === 'close') { renderClose(false); renderSummary(); }
-  if (t === 'backup') { renderSettings(false); renderUsers(); renderAccount(); renderBackupInfo(); renderLegacy(); }
+  if (t === 'backup') { renderSettings(false); renderUsers(); renderAccount(); renderBackupInfo(); renderLegacy(); renderPrinter(); }
 }
 function renderHeader() {
   $('#shopName').textContent = settings.shopName;
@@ -984,7 +1009,7 @@ $('#authSignOut').addEventListener('click', () => fa.signOut(auth));
 function resetSession() {
   stopLive();
   if (profileUnsub) { profileUnsub(); profileUnsub = null; }
-  me = null; products = []; inventory = []; settings = { ...DEFAULT_SETTINGS }; productsFromServer = false;
+  me = null; products = []; inventory = []; settings = { ...DEFAULT_SETTINGS }; productsFromServer = false; menuBase = null;
   Object.keys(live).forEach(k => { live[k] = []; });
   cart.clear(); payment = null;
   closeLock();
@@ -1340,10 +1365,9 @@ function renderCart() {
     : '';
   $('#cartTotal').textContent = money(cartTotal());
   if (payment && !settings.paymentMethods.includes(payment)) payment = null;
+  if (!payment) payment = defaultPayment();
   $('#paymentButtons').innerHTML = settings.paymentMethods.map(m =>
     `<button data-pay="${esc(m)}" class="${m === payment ? 'on' : ''}">${esc(m)}</button>`).join('');
-  $('#cashBox').classList.toggle('hidden', !isCash(payment));
-  updateChange();
   const n = items.reduce((t, i) => t + i.qty, 0);
   $('#cartBar').classList.toggle('hidden', n === 0 && !editing);
   $('#cartBarCount').textContent = (editing ? 'Editando · ' : '') + `${n} producto${n === 1 ? '' : 's'}`;
@@ -1449,14 +1473,7 @@ $('#completeSale').addEventListener('click', () => {
   if (!items.length) return toast(editing ? 'Una venta no puede quedar vacía. Para quitarla completa, usa "Anular" en Ventas.' : 'Agrega al menos un producto.', 5000);
   if (!payment) return toast('Elige la forma de pago.');
   const total = cartTotal();
-  let cashReceived = null, change = null;
-  if (isCash(payment)) {
-    const r = parseMoney($('#cashReceived').value);
-    if (!isNaN(r)) {
-      if (r < total) return toast('El efectivo recibido es menor al total.');
-      cashReceived = r; change = r - total;
-    }
-  }
+  const cashReceived = null, change = null; // "efectivo recibido" is no longer asked
   if (editing) return saveEdit(items, total, cashReceived, change);
   const now = nowDate();
   const consumption = cartConsumption();
@@ -1477,12 +1494,167 @@ $('#completeSale').addEventListener('click', () => {
     .map(i => ({ ...i, stock: round3(i.stock - consumption.find(c => c.itemId === i.id).qty) }))
     .filter(i => itemStatus(i) !== 'ok').map(i => `quedan ${fmtQty(i.stock)} ${i.unit} de ${i.name}`);
   if (stockChanges(b2, consumption.map(c => ({ itemId: c.itemId, delta: -c.qty })), 'venta', sale.id)) commit(b2, 'descontar el inventario');
+  const paidWith = payment;
   cart.clear(); payment = null; $('#cashReceived').value = '';
   renderCart();
-  let msg = change != null ? `Venta guardada. Cambio: ${money(change)}` : 'Venta guardada.';
+  let msg = `Venta guardada · ${money(total)} · ${paidWith}`;
   if (alerts.length) msg += ' ⚠ ' + alerts.join('; ');
   toast(msg, alerts.length ? 6000 : 3200);
+  if (printer.auto) printSale(sale);
 });
+
+/* ================= impresora ================= */
+// Generic 58 mm Bluetooth thermal printers speak ESC/POS over BLE. Web Bluetooth only exists in Chrome/Edge on
+// Android (and computers) and in Bluefy on iPhone. A print failure never affects the sale.
+const PRINTER_SERVICES = ['000018f0-0000-1000-8000-00805f9b34fb', '0000ff00-0000-1000-8000-00805f9b34fb', '0000ffe0-0000-1000-8000-00805f9b34fb',
+  '0000ae30-0000-1000-8000-00805f9b34fb', '0000fee7-0000-1000-8000-00805f9b34fb', '0000ae00-0000-1000-8000-00805f9b34fb',
+  'e7810a71-73ae-499d-8c15-faa9aef0c3f2', '49535343-fe7d-4ae5-8fa9-9fafd205e455'];
+const RECEIPT_COLS = 32;
+const printer = { device: null, char: null, name: ls.get('printerName', ''), auto: ls.get('printAuto', false), queue: Promise.resolve() };
+const btSupported = () => !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+function watchPrinter(device) {
+  if (device.__watched) return;
+  device.__watched = true;
+  device.addEventListener('gattserverdisconnected', () => { printer.char = null; renderPrinter(); });
+}
+async function attachPrinter(device) {
+  watchPrinter(device);
+  const server = device.gatt.connected ? device.gatt : await device.gatt.connect();
+  for (const svc of await server.getPrimaryServices()) {
+    let chars;
+    try { chars = await svc.getCharacteristics(); } catch { continue; }
+    const c = chars.find(x => x.properties.writeWithoutResponse) || chars.find(x => x.properties.write);
+    if (c) { printer.device = device; printer.char = c; renderPrinter(); return c; }
+  }
+  throw new Error('Esa impresora no acepta impresión por Bluetooth.');
+}
+async function choosePrinter() {
+  const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: PRINTER_SERVICES });
+  await attachPrinter(device);
+  printer.name = device.name || 'Impresora';
+  ls.set('printerName', printer.name);
+  if (ls.get('printAuto', null) === null) { printer.auto = true; ls.set('printAuto', true); }
+  renderPrinter();
+  return printer.char;
+}
+async function ensurePrinter(askUser) {
+  if (printer.char && printer.device?.gatt.connected) return printer.char;
+  if (printer.device) { try { return await attachPrinter(printer.device); } catch {} }
+  if (navigator.bluetooth.getDevices && printer.name) {
+    try {
+      const d = (await navigator.bluetooth.getDevices()).find(x => x.name === printer.name);
+      if (d) return await attachPrinter(d);
+    } catch {}
+  }
+  return askUser ? choosePrinter() : null;
+}
+// CP437, the code page every cheap ESC/POS printer has; Spanish letters mapped, anything else loses its accent.
+const CP437 = { 'á': 0xa0, 'é': 0x82, 'í': 0xa1, 'ó': 0xa2, 'ú': 0xa3, 'ñ': 0xa4, 'Ñ': 0xa5, 'ü': 0x81, 'Ü': 0x9a, 'É': 0x90,
+  '¿': 0xa8, '¡': 0xad, '·': 0xfa, '°': 0xf8, 'Á': 0x41, 'Í': 0x49, 'Ó': 0x4f, 'Ú': 0x55, '−': 0x2d, '—': 0x2d, '×': 0x78 };
+function encode437(text) {
+  const out = [];
+  for (const ch of String(text)) {
+    const code = ch.charCodeAt(0);
+    if (CP437[ch] !== undefined) out.push(CP437[ch]);
+    else if (code === 10 || (code >= 32 && code < 127)) out.push(code);
+    else {
+      const plain = ch.normalize('NFD').replace(/[̀-ͯ]/g, '');
+      out.push(plain && plain.charCodeAt(0) < 127 ? plain.charCodeAt(0) : 0x3f);
+    }
+  }
+  return out;
+}
+function wrapText(text, width) {
+  const lines = []; let line = '';
+  String(text).split(/\s+/).filter(Boolean).forEach(w => {
+    while (w.length > width) { if (line) { lines.push(line); line = ''; } lines.push(w.slice(0, width)); w = w.slice(width); }
+    if (!w) return;
+    if (!line) line = w; else if ((line + ' ' + w).length <= width) line += ' ' + w; else { lines.push(line); line = w; }
+  });
+  if (line) lines.push(line);
+  return lines.length ? lines : [''];
+}
+function twoCol(left, right) {
+  const lines = wrapText(left, RECEIPT_COLS - right.length - 1);
+  lines[0] = lines[0].padEnd(RECEIPT_COLS - right.length) + right;
+  return lines.join('\n');
+}
+const ESC = { init: [0x1b, 0x40, 0x1b, 0x74, 0x00], center: [0x1b, 0x61, 1], left: [0x1b, 0x61, 0], boldOn: [0x1b, 0x45, 1], boldOff: [0x1b, 0x45, 0],
+  big: [0x1d, 0x21, 0x11], tall: [0x1d, 0x21, 0x01], normal: [0x1d, 0x21, 0x00], feed: n => [0x1b, 0x64, n], cut: [0x1d, 0x56, 0x42, 0x00] };
+function receiptBytes(sale, copyLabel) {
+  const b = [], txt = t => b.push(...encode437(t + '\n')), rule = () => txt('-'.repeat(RECEIPT_COLS));
+  b.push(...ESC.init, ...ESC.center, ...ESC.big, ...ESC.boldOn); txt(settings.shopName || 'Abastos Brew');
+  b.push(...ESC.normal, ...ESC.boldOff); txt(copyLabel);
+  txt(fmtDateTime(sale.createdAt) + (sale.createdBy?.name ? ' · ' + sale.createdBy.name : ''));
+  b.push(...ESC.left); rule();
+  sale.items.forEach(i => {
+    txt(twoCol(`${i.qty}x ${i.name}`, money(i.unitPrice * i.qty)));
+    const extra = [i.variant, i.channel === 'delivery' ? 'Delivery' : ''].filter(Boolean).join(' · ');
+    if (extra) txt('   ' + extra);
+  });
+  rule();
+  b.push(...ESC.tall, ...ESC.boldOn); txt(twoCol('TOTAL', money(sale.total))); b.push(...ESC.normal, ...ESC.boldOff);
+  txt('Pago: ' + (sale.paymentMethod || ''));
+  if ((sale.edits || []).length) txt('Venta corregida ' + fmtDateTime(sale.editedAt || sale.createdAt));
+  b.push(...ESC.center); txt(''); txt('¡Gracias por tu visita!');
+  b.push(...ESC.feed(4), ...ESC.cut);
+  return new Uint8Array(b);
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function sendBytes(char, bytes) {
+  for (let i = 0; i < bytes.length; i += 100) {
+    const chunk = bytes.slice(i, i + 100);
+    if (char.properties.writeWithoutResponse && char.writeValueWithoutResponse) await char.writeValueWithoutResponse(chunk);
+    else await char.writeValue(chunk);
+    await sleep(30);
+  }
+}
+// Two copies per sale: one for the customer, one for the shop.
+function printSale(sale, { ask: manual = false } = {}) {
+  if (!btSupported()) {
+    if (manual) toast('Este navegador no puede usar Bluetooth. En Android usa Chrome; en iPhone, la app Bluefy.', 6000);
+    return Promise.resolve(false);
+  }
+  const job = printer.queue.then(async () => {
+    try {
+      const char = await ensurePrinter(true);
+      if (!char) return false;
+      for (const label of ['COPIA CLIENTE', 'COPIA NEGOCIO']) { await sendBytes(char, receiptBytes(sale, label)); await sleep(400); }
+      return true;
+    } catch (err) {
+      if (err?.name !== 'NotFoundError') toast('No se pudo imprimir' + (err?.message ? ': ' + err.message : '') + '. La venta sí se guardó.', 6000);
+      return false;
+    }
+  });
+  printer.queue = job.catch(() => {});
+  return job;
+}
+function renderPrinter() {
+  const ok = btSupported(), connected = !!(printer.char && printer.device?.gatt.connected);
+  $('#printerStatus').textContent = !ok ? 'Este navegador no tiene Bluetooth (en iPhone pasa con Safari, Chrome y Firefox). Usa Chrome en Android o la app Bluefy en iPhone.'
+    : connected ? `Conectada: ${printer.name}.`
+    : printer.name ? `Impresora: ${printer.name} (se conecta sola al imprimir).` : 'Ninguna impresora conectada en este teléfono.';
+  $('#printAuto').checked = !!printer.auto;
+  ['#printerConnect', '#printerTest', '#printAuto'].forEach(sel => { $(sel).disabled = !ok; });
+  $('#printerConnect').textContent = printer.name ? 'Cambiar impresora' : 'Conectar impresora';
+  $('#printerForget').classList.toggle('hidden', !printer.name);
+}
+$('#printerConnect').addEventListener('click', async () => {
+  try { await choosePrinter(); toast('Impresora conectada.'); }
+  catch (err) { if (err?.name !== 'NotFoundError') toast('No se pudo conectar: ' + (err?.message || err), 6000); }
+});
+$('#printerTest').addEventListener('click', () => {
+  const now = nowIso();
+  printSale({ createdAt: now, createdBy: me ? { name: me.name } : null, paymentMethod: defaultPayment() || 'Efectivo', total: 11000,
+    items: [{ qty: 2, name: 'Latte', unitPrice: 5500, variant: 'Prueba de impresión', channel: 'tienda' }] }, { ask: true })
+    .then(ok => { if (ok) toast('Prueba enviada.'); });
+});
+$('#printerForget').addEventListener('click', () => {
+  try { printer.device?.gatt.connected && printer.device.gatt.disconnect(); } catch {}
+  printer.device = null; printer.char = null; printer.name = '';
+  ls.set('printerName', ''); renderPrinter(); toast('Impresora olvidada en este teléfono.');
+});
+$('#printAuto').addEventListener('change', e => { printer.auto = e.target.checked; ls.set('printAuto', printer.auto); });
 
 /* ================= ventas ================= */
 // Each edit keeps the version it replaced, so the full chain is: original → change 1 → change 2 … → current.
@@ -1496,23 +1668,29 @@ function diffItems(before, after) {
   });
   return out;
 }
-function saleHistoryHtml(s) {
+function saleHistoryItems(s) {
   const edits = s.edits || [];
-  if (!edits.length) return '';
   const when = iso => (localDay(new Date(iso)) === s.day ? fmtTime(iso) : fmtDateTime(iso));
   const versions = [...edits.map(e => ({ items: e.items, total: e.total, paymentMethod: e.paymentMethod })), s];
-  const steps = edits.map((e, i) => {
+  const orig = versions[0];
+  const first = `<li><strong>Venta original</strong> · ${fmtDateTime(s.createdAt)} · ${esc(s.createdBy?.name || '?')}<br>
+    <span class="chg">${money(orig.total)} · ${esc(orig.paymentMethod)} · ${esc((orig.items || []).map(i => `${i.qty}× ${itemLabel(i)}`).join(', '))}</span></li>`;
+  return first + edits.map((e, i) => {
     const before = versions[i], after = versions[i + 1];
     const changes = diffItems(before.items || [], after.items || []);
-    if (before.paymentMethod !== after.paymentMethod) changes.push(`${esc(before.paymentMethod)} → ${esc(after.paymentMethod)}`);
-    const totalTxt = before.total !== after.total ? `${money(before.total)} → ${money(after.total)}` : 'mismo total';
-    return `<li><strong>Cambio ${i + 1}</strong> · ${when(e.at)} · ${esc(e.by?.name || '?')}<br><span class="chg">${totalTxt}${changes.length ? ' · ' + changes.map(esc).join(' · ') : ''}</span></li>`;
+    if (before.paymentMethod !== after.paymentMethod) changes.push(`Pago: ${before.paymentMethod} → ${after.paymentMethod}`);
+    const totalTxt = before.total !== after.total ? `${money(before.total)} → ${money(after.total)}` : `Mismo total (${money(after.total)})`;
+    return `<li><strong>Cambio ${i + 1}</strong> · ${when(e.at)} · ${esc(e.by?.name || '?')}<br>
+      <span class="chg">${totalTxt}${changes.length ? '<br>' + changes.map(esc).join('<br>') : ''}</span></li>`;
   }).join('');
-  const orig = versions[0];
-  return `<details class="sale-history"><summary>Historial · ${edits.length} cambio${edits.length === 1 ? '' : 's'}</summary><ol>
-    <li><strong>Venta original</strong> · ${fmtTime(s.createdAt)} · ${esc(s.createdBy?.name || '?')}<br><span class="chg">${money(orig.total)} · ${esc(orig.paymentMethod)} · ${esc((orig.items || []).map(i => `${i.qty}× ${itemLabel(i)}`).join(', '))}</span></li>
-    ${steps}</ol></details>`;
 }
+function openSaleHistory(s) {
+  const n = (s.edits || []).length;
+  $('#historyIntro').textContent = `Venta de las ${fmtTime(s.createdAt)} · editada ${n} ${n === 1 ? 'vez' : 'veces'} · total actual ${money(s.total)}.`;
+  $('#historyList').innerHTML = saleHistoryItems(s);
+  $('#historyDialog').showModal();
+}
+$('#historyClose').addEventListener('click', () => $('#historyDialog').close());
 let salesShown = new Map(), salesToken = 0;
 async function renderSales() {
   const token = ++salesToken;
@@ -1536,7 +1714,7 @@ async function renderSales() {
   $('#salesList').innerHTML = sales.length ? sales.map(s => {
     const time = fmtTime(s.createdAt);
     const pills = (s.voided ? `<span class="pill agotado">Anulada${s.voidedBy?.name ? ' · ' + esc(s.voidedBy.name) : ''}</span>` : '')
-      + (s.editedBy ? ` <span class="pill bajo">Editada${(s.edits || []).length > 1 ? ` ${s.edits.length} veces` : ''}</span>` : '');
+      + (s.editedBy ? ` <button type="button" class="pill bajo pill-btn" data-history="${s.id}">Editada${(s.edits || []).length > 1 ? ` ${s.edits.length} veces` : ''}</button>` : '');
     const rows = s.items.map(i => `<tr><td class="q">${i.qty}×</td>
         <td>${esc(i.name)}${i.variant ? ` <span class="meta">· ${esc(i.variant)}</span>` : ''}${i.channel === 'delivery' ? ' <span class="chan">Delivery</span>' : ''}</td>
         <td class="money">${money(i.unitPrice * i.qty)}</td></tr>`).join('');
@@ -1544,14 +1722,19 @@ async function renderSales() {
       <div class="sale-head"><span><strong>${time}</strong>${s.createdBy?.name ? ' · ' + esc(s.createdBy.name) : ''} · ${esc(s.paymentMethod)}</span><span>${pills}</span></div>
       <div class="table-wrap"><table class="sale-items">${rows}</table></div>
       <div class="sale-total"><span>Total</span><strong class="amt">${money(s.total)}</strong></div>
-      ${saleHistoryHtml(s)}
-      <div class="row sale-actions need-admin">
-        ${s.voided ? '' : `<button class="secondary" data-edit-sale="${s.id}">Editar</button>`}
-        <button class="danger" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></div></li>`;
+      <div class="row sale-actions">
+        ${s.voided ? '' : `<button class="secondary" data-print="${s.id}">Imprimir</button>`}
+        ${(s.edits || []).length ? `<button class="secondary" data-history="${s.id}">Ver cambios (${s.edits.length})</button>` : ''}
+        ${s.voided ? '' : `<button class="secondary need-admin" data-edit-sale="${s.id}">Editar</button>`}
+        <button class="danger need-admin" data-void="${s.id}">${s.voided ? 'Reactivar' : 'Anular'}</button></div></li>`;
   }).join('') : '<li class="empty">No hay ventas este día.</li>';
 }
 $('#salesDate').addEventListener('change', renderSales);
 $('#salesList').addEventListener('click', async e => {
+  const hi = e.target.closest('[data-history]');
+  if (hi) { const s = salesShown.get(hi.dataset.history); if (s) openSaleHistory(s); return; }
+  const pr = e.target.closest('[data-print]');
+  if (pr) { const s = salesShown.get(pr.dataset.print); if (s) printSale(s, { ask: true }); return; }
   const ed = e.target.closest('[data-edit-sale]');
   if (ed) { const s = salesShown.get(ed.dataset.editSale); if (s) startEdit(s); return; }
   const b = e.target.closest('[data-void]');
@@ -1608,11 +1791,7 @@ function readVariants() {
   return { variants: out };
 }
 function renderProductList() {
-  const plan = menuPlan();
-  $('#seedText').textContent = `El menú impreso tiene ${MENU.length} productos en 9 categorías. ` + (plan.create.length || plan.update.length
-    ? `Faltan ${plan.create.length} y ${plan.update.length} tienen otro precio o categoría. Cargar menú los crea o actualiza sin duplicar ni borrar nada.`
-    : 'Todo está al día.');
-  $('#seedBtn').disabled = !(plan.create.length || plan.update.length);
+  renderMenuBase();
   $('#categoryList').innerHTML = [...new Set(products.map(p => p.category).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join('');
   $('#productList').innerHTML = products.length ? sortedProducts().map(p =>
     `<li><div class="item-main"><strong>${esc(p.name)}</strong> — <span class="price-txt">Tienda ${money(p.price)}${hasDelivery(p) ? ` · Delivery ${money(p.deliveryPrice)}` : ''}</span>
@@ -1695,34 +1874,81 @@ $('#productList').addEventListener('click', async e => {
   }
 });
 const normName = s => { const n = String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); return MENU_ALIASES[n] || n; };
-function menuPlan() {
+// The printed menu (MENU) is only used to start a shop with no products. After that, the "menú base" saved in
+// settings/menuBase is what "Restaurar menú base" goes back to; admins update it with "Guardar como menú base".
+const PRODUCT_FIELDS = ['name', 'price', 'deliveryPrice', 'category', 'recipe', 'variants'];
+const productSnapshot = p => clean(Object.fromEntries([['id', p.id], ...PRODUCT_FIELDS.map(k => [k, p[k] ?? (k === 'recipe' || k === 'variants' ? [] : null)])]));
+// Firestore doesn't keep the order of fields inside a map, so compare with sorted keys.
+const stableJson = v => Array.isArray(v) ? '[' + v.map(stableJson).join(',') + ']'
+  : v && typeof v === 'object' ? '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableJson(v[k])).join(',') + '}' : JSON.stringify(v ?? null);
+const sameProduct = (a, b) => stableJson(productSnapshot(a)) === stableJson(productSnapshot(b));
+function printedMenuPlan() {
   const byName = new Map(products.map(p => [normName(p.name), p]));
-  const create = [], update = [];
+  const create = [];
   MENU.forEach(([name, price, category, variants]) => {
-    const cur = byName.get(normName(name));
-    if (!cur) return create.push({ name, price, category, variants });
-    const needsVariants = variants && !variantsOf(cur).length;
-    if (cur.price !== price * 100 || cur.category !== category || cur.name !== name || needsVariants) update.push({ cur, name, price, category, variants: needsVariants ? variants : null });
+    if (byName.has(normName(name))) return;
+    const id = uid();
+    create.push({ id, name, price: price * 100, deliveryPrice: null, category, recipe: [], variants: mkVariants(variants) });
+  });
+  return { create, update: [] };
+}
+// What restoring the base would do: products from the base that are missing get created, the ones that changed go back.
+// Products added after the base was saved are left alone.
+function basePlan() {
+  // No base yet: only an empty shop may load the printed menu (an existing menu is never overwritten by it).
+  if (!menuBase) return products.length ? { create: [], update: [] } : printedMenuPlan();
+  const byId = new Map(products.map(p => [p.id, p])), byName = new Map(products.map(p => [normName(p.name), p]));
+  const create = [], update = [];
+  (menuBase.products || []).forEach(bp => {
+    const cur = byId.get(bp.id) || byName.get(normName(bp.name));
+    if (!cur) create.push(bp);
+    else if (!sameProduct({ ...bp, id: cur.id }, cur)) update.push({ ...bp, id: cur.id });
   });
   return { create, update };
 }
 const mkVariants = list => (list || []).map(([name, extra]) => ({ id: uid(), name, extra: extra * 100, recipe: [] }));
+function renderMenuBase() {
+  const plan = basePlan(), changes = plan.create.length + plan.update.length;
+  if (!menuBase) {
+    $('#seedText').textContent = products.length
+      ? 'Todavía no hay un menú base guardado. Se guarda solo la primera vez que un administrador abre la app con internet.'
+      : `No hay productos todavía. "Restaurar menú base" carga el menú impreso (${MENU.length} productos).`;
+  } else {
+    const n = (menuBase.products || []).length;
+    $('#seedText').textContent = `Menú base: ${n} productos, guardado el ${fmtDateTime(menuBase.savedAt)}${menuBase.savedBy?.name ? ' por ' + menuBase.savedBy.name : ''}. `
+      + (changes ? `El menú actual tiene ${changes} cambio${changes === 1 ? '' : 's'} respecto al base. Si los cambios están bien, toca "Guardar como menú base".`
+        : 'El menú actual es igual al menú base.');
+  }
+  $('#seedBtn').disabled = !changes;
+  $('#baseSaveBtn').disabled = !products.length || (!!menuBase && !changes && (menuBase.products || []).length === products.length);
+}
+function saveMenuBase(auto = false) {
+  const doc = { products: sortedProducts().map(productSnapshot), savedAt: nowIso(), savedBy: auto ? { uid: me.uid, name: me.name + ' (automático)' } : byMe() };
+  return track(ff.setDoc(dref('settings', 'menuBase'), doc), 'guardar el menú base');
+}
+// First time an admin opens this version online: the menu they have now becomes the base.
+function autoSaveMenuBase() {
+  if (menuBase || menuBaseSaving || !canAdmin() || !productsFromServer || !serverReady.menuBase || !products.length) return;
+  menuBaseSaving = true;
+  saveMenuBase(true);
+}
+$('#baseSaveBtn').addEventListener('click', async () => {
+  if (!requireAdmin()) return;
+  if (!(await ask({ title: 'Guardar como menú base', text: `Los ${products.length} productos de ahora (precios, variantes e insumos) quedan como el menú al que regresa "Restaurar menú base".`, ok: 'Guardar' }))) return;
+  saveMenuBase();
+  toast('Menú base guardado.');
+});
 $('#seedBtn').addEventListener('click', async () => {
   if (!requireAdmin()) return;
-  const { create, update } = menuPlan();
-  if (!create.length && !update.length) return toast('El menú ya está al día.');
-  const lines = [create.length ? `Nuevos: ${create.map(x => x.name).join(', ')}.` : '', update.length ? `Se actualizan: ${update.map(x => x.name).join(', ')}.` : ''].filter(Boolean).join(' ');
-  if (!(await ask({ title: 'Cargar menú', text: `${lines} Recetas de inventario, precios de delivery y productos que no están en el menú no se tocan.`, ok: 'Cargar' }))) return;
+  const { create, update } = basePlan();
+  if (!create.length && !update.length) return toast('El menú ya es igual al menú base.');
+  const lines = [create.length ? `Se crean: ${create.map(x => x.name).join(', ')}.` : '', update.length ? `Regresan a como estaban en el menú base (precio, variantes e insumos): ${update.map(x => x.name).join(', ')}.` : ''].filter(Boolean).join(' ');
+  const title = menuBase ? 'Restaurar menú base' : 'Cargar menú impreso';
+  if (!(await ask({ title, text: `${lines} Los productos que no están en el menú base no se tocan.`, ok: 'Restaurar' }))) return;
   const b = ff.writeBatch(fs);
-  create.forEach(({ name, price, category, variants }) => {
-    const id = uid();
-    b.set(dref('products', id), { id, name, price: price * 100, deliveryPrice: null, category, recipe: [], variants: mkVariants(variants) });
-  });
-  update.forEach(({ cur, name, price, category, variants }) => {
-    b.update(dref('products', cur.id), clean({ name, price: price * 100, category, ...(variants ? { variants: mkVariants(variants) } : {}) }));
-  });
-  commit(b, 'cargar el menú');
-  toast(`Menú cargado: ${create.length} nuevos, ${update.length} actualizados.`, 5000);
+  [...create, ...update].forEach(p => b.set(dref('products', p.id), productSnapshot(p)));
+  commit(b, 'restaurar el menú');
+  toast(`Menú restaurado: ${create.length} creados, ${update.length} restaurados.`, 5000);
 });
 
 /* ================= inventario ================= */
